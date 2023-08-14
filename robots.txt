@@ -1,1 +1,1 @@
-Sitemap: https://max-we.github.io/sitemap.xml
+Sitemap: https://max-we.github.io/ml-blog/sitemap.xml
