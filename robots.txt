@@ -1,1 +1,1 @@
-Sitemap: https://max-we.github.io/ml-blog/sitemap.xml
+Sitemap: https://maximilian-weichart.de/sitemap.xml
