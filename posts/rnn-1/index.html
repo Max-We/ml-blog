@@ -221,7 +221,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </nav>
     </div>
 <!-- main -->
-<main class="content quarto-banner-title-block" id="quarto-document-content">
+<main class="content quarto-banner-title-block page-columns page-full" id="quarto-document-content">
 
 
 
@@ -267,7 +267,7 @@ Note
 </section>
 <section id="sec-chall-2" class="level3" data-number="1.2.2">
 <h3 data-number="1.2.2" class="anchored" data-anchor-id="sec-chall-2"><span class="header-section-number">1.2.2</span> Complex courses</h3>
-<p>The values of our input data don’t necessarily form a straight line. In the example of OpenAI, the value increases, decreases, then increases again. Because of this complexity, we won’t get very far with simple statistics like taking the mean or doing linear regression.</p>
+<p>The values of our input data don’t necessarily form a straight line. In the example of OpenAI, the value decreases, then increases again. Because of this complexity, we won’t get very far with simple statistics like taking the mean or doing linear regression.</p>
 <p>So how could we solve these problems?</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -285,7 +285,7 @@ Note
 </section>
 </section>
 </section>
-<section id="rnn" class="level1" data-number="2">
+<section id="rnn" class="level1 page-columns page-full" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> RNN</h1>
 <p>Let’s see how an RNN can approach these problems and could be used to predict stock prices from our example.</p>
 <section id="setup" class="level2" data-number="2.1">
@@ -360,18 +360,18 @@ Note
 </div>
 </div>
 </section>
-<section id="rnn-1" class="level2" data-number="2.2">
+<section id="rnn-1" class="level2 page-columns page-full" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="rnn-1"><span class="header-section-number">2.2</span> RNN</h2>
-<section id="architecture" class="level3" data-number="2.2.1">
+<section id="architecture" class="level3 page-columns page-full" data-number="2.2.1">
 <h3 data-number="2.2.1" class="anchored" data-anchor-id="architecture"><span class="header-section-number">2.2.1</span> Architecture</h3>
-<p>Given a sequence of input values <span class="math inline">\(x\)</span>, predicting an outcome <span class="math inline">\(y\)</span> is not a problem. If you’ve worked with neural networks before, you’ve done it a thousand times. You define a sequence of layers and activation functions (to keep it simple we’ll use linear layers and relu only), as well as the number of inputs and outputs and the with the correct weights, the model will solve the problem. The problem of the stock courses having a complex form (see <a href="#sec-chall-2">Section&nbsp;1.2.2</a>) can be easily solved with a neural network with enough layers.</p>
+<div class="page-columns page-full"><p>Given a sequence of input values <span class="math inline">\(x\)</span>, predicting an outcome <span class="math inline">\(y\)</span> is not a problem. If you’ve worked with neural networks before, you’ve done it a thousand times. You define a sequence of layers and activation functions (to keep it simple we’ll use linear layers and relu only), as well as the number of inputs and outputs together with the correct weights, the model will solve the problem. The problem of the stock courses having a complex form<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> can be easily solved with a neural network with enough layers.</p><div class="no-row-height column-margin column-container"><li id="fn1"><p><sup>1</sup>&nbsp;see <a href="#sec-chall-2">Section&nbsp;1.2.2</a></p></li></div></div>
 <div id="fig-ff" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
 <p><img src="images/feed-forward.png" class="img-fluid figure-img"></p>
 <figcaption class="figure-caption">Figure&nbsp;3: Schema of a feed forward neural network with four inputs and one output</figcaption>
 </figure>
 </div>
-<p>The problem that remains even in a classic feed forward neural network is, that it only works with a fixed number of inputs (see <a href="#sec-chall-1">Section&nbsp;1.2.1</a>). To make the model more flexible, RNNs use a “feedback loop”, which solves exactly that problem.</p>
+<div class="page-columns page-full"><p>The problem that remains even in a classic feed forward neural network is, that it only works with a fixed number of inputs<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>. To make the model more flexible, RNNs use a “feedback loop”, which solves exactly that problem.</p><div class="no-row-height column-margin column-container"><li id="fn2"><p><sup>2</sup>&nbsp;see <a href="#sec-chall-1">Section&nbsp;1.2.1</a></p></li></div></div>
 <p>Think about how you make a prediction of one of these stock courses. If you’re like me, you will read the line from the beginning to the end and build up an overall feeling of the development. In the example of the Google stock, you could think: It starts out at $400, but it’s decreasing… and again, it’s decreasing - and so on. RNNs do a similar thing, while a normal feed-forward neural network looks at all the data points at the same time and comes to a conclusion all at once.</p>
 <p>Imagine a more complex scenario: A stock with 10,000 values over multiple years. A neural network with a fixed input size would look at all the values at once, as if it had 10,000 eyes, and calculate the prediction. Intuitively, an RNN is much more like a human. It looks at each data point sequentially (“feedback loop”) and builds up an overall opinion (“hidden state”, <span class="math inline">\(h\)</span>) of the stock, until it’s reached the last data point, at which it will output its prediction.</p>
 <div id="fig-rnn-unrolled" class="quarto-figure quarto-figure-center anchored">
@@ -419,19 +419,19 @@ Note
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-cell="annotated-cell-3" data-code-lines="13" data-code-annotation="1">Input layer</span>
+<span data-code-annotation="1" data-code-lines="13" data-code-cell="annotated-cell-3">Input layer</span>
 </dd>
 <dt data-target-cell="annotated-cell-3" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-cell="annotated-cell-3" data-code-lines="15" data-code-annotation="2">Hidden state &amp; activation function (relu)</span>
+<span data-code-annotation="2" data-code-lines="15" data-code-cell="annotated-cell-3">Hidden state &amp; activation function (relu)</span>
 </dd>
 <dt data-target-cell="annotated-cell-3" data-target-annotation="3">3</dt>
 <dd>
-<span data-code-cell="annotated-cell-3" data-code-lines="16" data-code-annotation="3">Feedback loop</span>
+<span data-code-annotation="3" data-code-lines="16" data-code-cell="annotated-cell-3">Feedback loop</span>
 </dd>
 <dt data-target-cell="annotated-cell-3" data-target-annotation="4">4</dt>
 <dd>
-<span data-code-cell="annotated-cell-3" data-code-lines="20" data-code-annotation="4">Output layer</span>
+<span data-code-annotation="4" data-code-lines="20" data-code-cell="annotated-cell-3">Output layer</span>
 </dd>
 </dl>
 </div>
@@ -524,7 +524,7 @@ Result: 0.0</code></pre>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>small_falling <span class="op">=</span> [<span class="dv">1</span>,<span class="fl">0.9</span>]</span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>small_curve <span class="op">=</span> [<span class="fl">0.2</span>,<span class="fl">00.1</span>,<span class="fl">0.1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell" data-execution_count="11">
+<div class="cell" data-execution_count="18">
 <div class="cell-output cell-output-display">
 <div id="fig-small-expected" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -610,6 +610,7 @@ Result: 0.0</code></pre>
 
 
 </section>
+
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
