@@ -332,7 +332,3 @@ pyrightconfig.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,visualstudiocode,linux,python,jupyternotebooks
-
-# Quarto
-quarto/.quarto
-quarto/_site
