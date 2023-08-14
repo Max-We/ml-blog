@@ -11,3 +11,6 @@ toc: true
 number-sections: true
 highlight-style: github
 reference-location: margin
+
+# Open-Graph
+card-style: summary
