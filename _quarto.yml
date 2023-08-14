@@ -7,8 +7,7 @@ website:
   image: images/banner.png
   site-url: https://max-we.github.io/ml-blog
   open-graph: true
-  twitter-card:
-    creator: "@MaxWeichart"
+  twitter-card: true
   navbar:
     logo: images/favicon.png
     right:
