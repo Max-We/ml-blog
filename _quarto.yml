@@ -5,7 +5,7 @@ website:
   title: "MW does ML"
   favicon: images/favicon.png
   image: images/banner.png
-  site-url: https://max-we.github.io
+  site-url: https://max-we.github.io/ml-blog
   open-graph: true
   twitter-card:
     creator: "@MaxWeichart"
