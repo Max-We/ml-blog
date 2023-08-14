@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Maximilian Weichart">
+<meta name="dcterms.date" content="2023-08-12">
+
+<title>MW does ML - Introduction to RNNs</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../images/favicon.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../images/favicon.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">MW does ML</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html" rel="" target="">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Max-We" rel="" target=""><i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+</ul>
+            <div class="quarto-navbar-tools">
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Introduction to RNNs</h1>
+                      </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Maximilian Weichart </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">August 12, 2023</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a>
+  <ul class="collapse">
+  <li><a href="#stock-data" id="toc-stock-data" class="nav-link" data-scroll-target="#stock-data"><span class="header-section-number">1.1</span> Stock data</a></li>
+  <li><a href="#challenges" id="toc-challenges" class="nav-link" data-scroll-target="#challenges"><span class="header-section-number">1.2</span> Challenges</a>
+  <ul class="collapse">
+  <li><a href="#sec-chall-1" id="toc-sec-chall-1" class="nav-link" data-scroll-target="#sec-chall-1"><span class="header-section-number">1.2.1</span> Varying amounts of data</a></li>
+  <li><a href="#sec-chall-2" id="toc-sec-chall-2" class="nav-link" data-scroll-target="#sec-chall-2"><span class="header-section-number">1.2.2</span> Complex courses</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#rnn" id="toc-rnn" class="nav-link" data-scroll-target="#rnn"><span class="header-section-number">2</span> RNN</a>
+  <ul class="collapse">
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup"><span class="header-section-number">2.1</span> Setup</a></li>
+  <li><a href="#rnn-1" id="toc-rnn-1" class="nav-link" data-scroll-target="#rnn-1"><span class="header-section-number">2.2</span> RNN</a>
+  <ul class="collapse">
+  <li><a href="#architecture" id="toc-architecture" class="nav-link" data-scroll-target="#architecture"><span class="header-section-number">2.2.1</span> Architecture</a></li>
+  <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation"><span class="header-section-number">2.2.2</span> Implementation</a></li>
+  <li><a href="#testing" id="toc-testing" class="nav-link" data-scroll-target="#testing"><span class="header-section-number">2.2.3</span> Testing</a></li>
+  <li><a href="#validating" id="toc-validating" class="nav-link" data-scroll-target="#validating"><span class="header-section-number">2.2.4</span> Validating</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#limit-testing" id="toc-limit-testing" class="nav-link" data-scroll-target="#limit-testing"><span class="header-section-number">3</span> Limit testing</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">4</span> Summary</a></li>
+  <li><a href="#part-2" id="toc-part-2" class="nav-link" data-scroll-target="#part-2"><span class="header-section-number">5</span> Part 2</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+<section id="introduction" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
+<p>Imagine how cool it would be if you could see the future. Or, at least, how stock prices develop in the next week. You would be rich very, very fast. But instead of doing all the work for yourself, how about developing a model that does the predictions for us? If we could somehow figure out how to build such a model, we’d never have to worry about money again. So let’s do it!</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This notebook is based on <a href="https://www.youtube.com/watch?v=AsNTP8Kwu80">Recurrent Neural Networks (RNNs), Clearly Explained!!!</a> by StatQuest:</p>
+<div class="quarto-video ratio ratio-16x9"><iframe data-external="1" src="https://www.youtube.com/embed/AsNTP8Kwu80" title="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
+</div>
+</div>
+<section id="stock-data" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="stock-data"><span class="header-section-number">1.1</span> Stock data</h2>
+<p>Let’s take a look at some imaginary stock courses to get an idea of the data we’re working with.</p>
+<div class="cell" data-execution_count="1">
+<div class="cell-output cell-output-display">
+<div id="fig-stock-examples" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-stock-examples-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;1: Examples for stock price changes (values are chosen purely arbitrary)</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In this simplified example, we can see the stock of two companies change throughout the years. So how could we use a model to predict these changes?</p>
+</section>
+<section id="challenges" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="challenges"><span class="header-section-number">1.2</span> Challenges</h2>
+<p>When we take a closer look at this kind of data, we can notice a couple of challenges that we have to solve.</p>
+<section id="sec-chall-1" class="level3" data-number="1.2.1">
+<h3 data-number="1.2.1" class="anchored" data-anchor-id="sec-chall-1"><span class="header-section-number">1.2.1</span> Varying amounts of data</h3>
+<p>The amount of data points for each stock can vary. In this example, there are 4 values for Googles, but only 3 values for OpenAIs stock. If you’ve worked with neural networks before, you know that this problem is not straightforward to solve. Usually, models expect a fixed number of inputs and produce a fixed number of outputs. However, our use case requires the model to work with different amounts of input data!</p>
+</section>
+<section id="sec-chall-2" class="level3" data-number="1.2.2">
+<h3 data-number="1.2.2" class="anchored" data-anchor-id="sec-chall-2"><span class="header-section-number">1.2.2</span> Complex courses</h3>
+<p>The values of our input data don’t necessarily form a straight line. In the example of OpenAI, the value increases, decreases, then increases again. Because of this complexity, we won’t get very far with simple statistics like taking the mean or doing linear regression.</p>
+<p>So how could we solve these problems?</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Take a moment and just brainstorm a couple of solutions. They don’t have to be perfect, but just ask yourself: How could you solve these two problems?</p>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="rnn" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> RNN</h1>
+<p>Let’s see how an RNN can approach these problems and could be used to predict stock prices from our example.</p>
+<section id="setup" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="setup"><span class="header-section-number">2.1</span> Setup</h2>
+<p>First, we’ll introduce a couple of example stock data with more or less simple forms to work with:</p>
+<ul>
+<li>Three simple stocks, representing rising, falling and constant values</li>
+<li>A more complicated stock, which falls and rises</li>
+</ul>
+<div class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>stock_rising <span class="op">=</span> [<span class="dv">0</span>, <span class="fl">0.5</span>] <span class="co"># expected continuation: 1</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>stock_constant <span class="op">=</span> [<span class="fl">0.5</span>, <span class="fl">0.5</span>] <span class="co"># expected continuation: 0.5</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>stock_falling <span class="op">=</span> [<span class="dv">1</span>, <span class="fl">0.5</span>] <span class="co"># expected continuation: 0</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>stock_curve <span class="op">=</span> [<span class="dv">1</span>, <span class="fl">0.5</span>, <span class="fl">0.5</span>] <span class="co"># expected continuation: 1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The values in our dataset are normalized to 0 - 1.</p>
+</div>
+</div>
+<p>Let’s visualize the values, so we get a feeling of what’s going on.</p>
+<div class="cell" data-execution_count="3">
+<details>
+<summary>Visualization function</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_data(X, Y, title, dotted<span class="op">=</span><span class="va">True</span>):</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    num_plots <span class="op">=</span> <span class="bu">len</span>(X)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    max_len <span class="op">=</span> <span class="bu">max</span>([<span class="bu">len</span>(x) <span class="cf">for</span> x <span class="kw">in</span> X]) <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    fig, axis <span class="op">=</span> plt.subplots(<span class="dv">1</span>, num_plots, figsize<span class="op">=</span>(max_len <span class="op">*</span> num_plots, max_len))</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> <span class="bu">isinstance</span>(axis, np.ndarray):</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        axis <span class="op">=</span> np.array([axis])</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Set aspect ratio and y-axis limits for all subplots</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> ax <span class="kw">in</span> axis:</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        ax.set_aspect(<span class="st">'auto'</span>, adjustable<span class="op">=</span><span class="st">'box'</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        ax.set_ylim(<span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        ax.set_xlim(<span class="dv">0</span>, max_len)</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Input values</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        space <span class="op">=</span> np.linspace(<span class="dv">0</span>, max_len, <span class="bu">len</span>(x) <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        axis[i].plot(space, x <span class="op">+</span> [np.nan], label<span class="op">=</span><span class="st">"x"</span>)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Values to be predicted by the RNN</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, y <span class="kw">in</span> <span class="bu">enumerate</span>(Y):</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        <span class="co"># rescale x-axis values</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        continuation_point <span class="op">=</span> (<span class="bu">len</span>(X[i])<span class="op">-</span><span class="dv">1</span>) <span class="op">/</span> <span class="bu">len</span>(X[i]) <span class="op">*</span> max_len</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        axis[i].plot([continuation_point, max_len], [X[i][<span class="op">-</span><span class="dv">1</span>], y], linestyle<span class="op">=</span><span class="st">'dotted'</span> <span class="cf">if</span> dotted <span class="cf">else</span> <span class="st">'solid'</span>, label<span class="op">=</span><span class="st">"y"</span>)</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    plt.suptitle(title)</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="4">
+<div class="cell-output cell-output-display">
+<div id="fig-stock-visualization" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-stock-visualization-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;2: Input stock data arrays and the expected continuation</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="rnn-1" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="rnn-1"><span class="header-section-number">2.2</span> RNN</h2>
+<section id="architecture" class="level3" data-number="2.2.1">
+<h3 data-number="2.2.1" class="anchored" data-anchor-id="architecture"><span class="header-section-number">2.2.1</span> Architecture</h3>
+<p>Given a sequence of input values <span class="math inline">\(x\)</span>, predicting an outcome <span class="math inline">\(y\)</span> is not a problem. If you’ve worked with neural networks before, you’ve done it a thousand times. You define a sequence of layers and activation functions (to keep it simple we’ll use linear layers and relu only), as well as the number of inputs and outputs and the with the correct weights, the model will solve the problem. The problem of the stock courses having a complex form (see <a href="#sec-chall-2">Section&nbsp;1.2.2</a>) can be easily solved with a neural network with enough layers.</p>
+<div id="fig-ff" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/feed-forward.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;3: Schema of a feed forward neural network with four inputs and one output</figcaption>
+</figure>
+</div>
+<p>The problem that remains even in a classic feed forward neural network is, that it only works with a fixed number of inputs (see <a href="#sec-chall-1">Section&nbsp;1.2.1</a>). To make the model more flexible, RNNs use a “feedback loop”, which solves exactly that problem.</p>
+<p>Think about how you make a prediction of one of these stock courses. If you’re like me, you will read the line from the beginning to the end and build up an overall feeling of the development. In the example of the Google stock, you could think: It starts out at $400, but it’s decreasing… and again, it’s decreasing - and so on. RNNs do a similar thing, while a normal feed-forward neural network looks at all the data points at the same time and comes to a conclusion all at once.</p>
+<p>Imagine a more complex scenario: A stock with 10,000 values over multiple years. A neural network with a fixed input size would look at all the values at once, as if it had 10,000 eyes, and calculate the prediction. Intuitively, an RNN is much more like a human. It looks at each data point sequentially (“feedback loop”) and builds up an overall opinion (“hidden state”, <span class="math inline">\(h\)</span>) of the stock, until it’s reached the last data point, at which it will output its prediction.</p>
+<div id="fig-rnn-unrolled" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rnn-unrolled.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;4: Unrolled schema of an RNN that handles four inputs</figcaption>
+</figure>
+</div>
+<p>As you can see, the RNN does the same thing over and over again, until it’s looked at all data points. This is why it can be summarized to be more concise, in a recursive version, which gives us the final architecture of an RNN:</p>
+<div id="fig-rnn-unrolled" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rnn.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;5: Concise schema of an RNN that handles four inputs. The input values are being passed sequentially, one by one)</figcaption>
+</figure>
+</div>
+</section>
+<section id="implementation" class="level3" data-number="2.2.2">
+<h3 data-number="2.2.2" class="anchored" data-anchor-id="implementation"><span class="header-section-number">2.2.2</span> Implementation</h3>
+<p>Now that we know how the architecture of an RNN looks like, let’s implement it in Python. Essentially, we want to implement the feedback loop, which consists of a linear layer and an activation function, and the output layer, which is another linear layer</p>
+<div class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="annotated-cell-3"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-3-1"><a href="#annotated-cell-3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> lin(x,w,b<span class="op">=</span><span class="dv">0</span>):</span>
+<span id="annotated-cell-3-2"><a href="#annotated-cell-3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x<span class="op">*</span>w<span class="op">+</span>b</span>
+<span id="annotated-cell-3-3"><a href="#annotated-cell-3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-3-4"><a href="#annotated-cell-3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> relu(x):</span>
+<span id="annotated-cell-3-5"><a href="#annotated-cell-3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">max</span>(x,<span class="dv">0</span>)</span>
+<span id="annotated-cell-3-6"><a href="#annotated-cell-3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-3-7"><a href="#annotated-cell-3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MiniRnn():</span>
+<span id="annotated-cell-3-8"><a href="#annotated-cell-3-8" aria-hidden="true" tabindex="-1"></a>  w1 <span class="op">=</span> <span class="fl">1.4</span></span>
+<span id="annotated-cell-3-9"><a href="#annotated-cell-3-9" aria-hidden="true" tabindex="-1"></a>  w2 <span class="op">=</span> <span class="op">-</span><span class="fl">0.5</span></span>
+<span id="annotated-cell-3-10"><a href="#annotated-cell-3-10" aria-hidden="true" tabindex="-1"></a>  w3 <span class="op">=</span> <span class="fl">1.4</span></span>
+<span id="annotated-cell-3-11"><a href="#annotated-cell-3-11" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="annotated-cell-3-12"><a href="#annotated-cell-3-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> forward(<span class="va">self</span>, X, i<span class="op">=</span><span class="dv">0</span>, h<span class="op">=</span><span class="dv">0</span>):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-3-13" class="code-annotation-target"><a href="#annotated-cell-3-13" aria-hidden="true" tabindex="-1"></a>    l1 <span class="op">=</span> lin(X[i], <span class="va">self</span>.w1)</span>
+<span id="annotated-cell-3-14"><a href="#annotated-cell-3-14" aria-hidden="true" tabindex="-1"></a>      </span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-3-15" class="code-annotation-target"><a href="#annotated-cell-3-15" aria-hidden="true" tabindex="-1"></a>    h <span class="op">=</span> relu(l1 <span class="op">+</span> h<span class="op">*</span><span class="va">self</span>.w2)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-3-16" class="code-annotation-target"><a href="#annotated-cell-3-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(i<span class="op">+</span><span class="dv">1</span> <span class="op">!=</span> <span class="bu">len</span>(X)):</span>
+<span id="annotated-cell-3-17"><a href="#annotated-cell-3-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.forward(X, i<span class="op">+</span><span class="dv">1</span>, h)</span>
+<span id="annotated-cell-3-18"><a href="#annotated-cell-3-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="annotated-cell-3-19"><a href="#annotated-cell-3-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Output</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="4" onclick="event.preventDefault();">4</a><span id="annotated-cell-3-20" class="code-annotation-target"><a href="#annotated-cell-3-20" aria-hidden="true" tabindex="-1"></a>    l2 <span class="op">=</span> lin(h, <span class="va">self</span>.w3)</span>
+<span id="annotated-cell-3-21"><a href="#annotated-cell-3-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">round</span>(l2, <span class="dv">1</span>)</span>
+<span id="annotated-cell-3-22"><a href="#annotated-cell-3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-3-23"><a href="#annotated-cell-3-23" aria-hidden="true" tabindex="-1"></a>rnn <span class="op">=</span> MiniRnn()</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-annotation="1" data-code-cell="annotated-cell-3" data-code-lines="13">Input layer</span>
+</dd>
+<dt data-target-cell="annotated-cell-3" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-annotation="2" data-code-cell="annotated-cell-3" data-code-lines="15">Hidden state &amp; activation function (relu)</span>
+</dd>
+<dt data-target-cell="annotated-cell-3" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-annotation="3" data-code-cell="annotated-cell-3" data-code-lines="16">Feedback loop</span>
+</dd>
+<dt data-target-cell="annotated-cell-3" data-target-annotation="4">4</dt>
+<dd>
+<span data-code-annotation="4" data-code-cell="annotated-cell-3" data-code-lines="20">Output layer</span>
+</dd>
+</dl>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The weights <code>w1</code>, <code>w2</code>, <code>w3</code> have been calculated using gradient descent. In the next part of this series, we will learn how to do that ourselves - for now we’ll just use them as they are.</p>
+</div>
+</div>
+<p>Let’s think about how the model will calculate its prediction.</p>
+<ol type="1">
+<li>The RNN iterates over all values in the input sequence (<code>X</code>) and starts with no memory (“hidden state”) at all because <code>h=0</code> in the first iteration.</li>
+<li>After looking at a new value, it saves all its “thoughts” in the hidden state <code>h</code>, until it iterated over all elements.</li>
+<li>Once it has looked at all values (and <em>only</em> then because this is the only <code>return</code> statement that terminates the recursion) the model forms its conclusion and returns the prediction</li>
+</ol>
+<p>If you’re interested in a more formal definition of the RNN, check out part 2 of this series, where I will introduce some of the math related to RNNs.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Important
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>If you’ve watched the StatQuest video on RNNs, you may notice that relu activation function is being applied <em>before</em> its being multiplies with <code>w2</code>. If we followed the video, our implementation would be: <code>h = max(l1 + h, 0) * w2</code>. However, the implementation from the video is <strong>wrong</strong>, it is not how RNNs are defined.</p>
+<p>For now, this is not too important, but we’ll see in part 2 why this makes a huge difference.</p>
+</div>
+</div>
+</section>
+<section id="testing" class="level3" data-number="2.2.3">
+<h3 data-number="2.2.3" class="anchored" data-anchor-id="testing"><span class="header-section-number">2.2.3</span> Testing</h3>
+<p>Let’s validate the model by looking at the outputs:</p>
+<div class="cell" data-outputid="c48a5638-badd-4e29-a772-a4dddab8f4e7" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>r1 <span class="op">=</span> rnn.forward(stock_rising)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>r2 <span class="op">=</span> rnn.forward(stock_constant)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>r3 <span class="op">=</span> rnn.forward(stock_falling)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>r4 <span class="op">=</span> rnn.forward(stock_curve)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>r1,r2,r3,r4</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="6">
+<pre><code>(1.0, 0.5, 0.0, 1.0)</code></pre>
+</div>
+</div>
+<div class="cell" data-outputid="b32098ea-23c0-4e6d-84d9-d0f1f5c9e4a7" data-execution_count="7">
+<div class="cell-output cell-output-display">
+<div id="fig-stock-visualization-prediction" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-stock-visualization-prediction-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;6: Input stock data arrays with the model prediction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The RNN can predict the next values for all the stocks, nice!</p>
+<p>To understand each step in detail, here are the steps our RNN took in forward-pass for <code>stock_falling</code>.</p>
+<div class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>stock_falling</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="8">
+<pre><code>[1, 0.5]</code></pre>
+</div>
+</div>
+<div class="cell" data-outputid="988b3e68-1bc5-41fb-e687-f9415d67762f" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>l1 <span class="op">=</span> relu(<span class="dv">1</span> <span class="op">*</span> <span class="fl">1.4</span> <span class="op">+</span> <span class="dv">0</span> <span class="op">*</span> <span class="op">-</span><span class="fl">0.5</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>l2 <span class="op">=</span> relu(<span class="fl">0.5</span> <span class="op">*</span> <span class="fl">1.4</span> <span class="op">+</span> l1 <span class="op">*</span> <span class="op">-</span><span class="fl">0.5</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>l3 <span class="op">=</span> <span class="fl">1.4</span> <span class="op">*</span> l2</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Layers: l1: </span><span class="sc">{</span>l1<span class="sc">}</span><span class="ss"> l2: </span><span class="sc">{</span>l2<span class="sc">}</span><span class="ss"> l3: </span><span class="sc">{</span>l3<span class="sc">}</span><span class="ch">\n</span><span class="ss">Result: </span><span class="sc">{</span>l3<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Layers: l1: 1.4 l2: 0.0 l3: 0.0
+Result: 0.0</code></pre>
+</div>
+</div>
+<p>As you can see, each layer uses the output from the previous layer and the same three weights are being shared across all calculations. Even if we passed in a sequence of 100 values, we’d only be using w1,w2 and w3 in the model.</p>
+</section>
+<section id="validating" class="level3" data-number="2.2.4">
+<h3 data-number="2.2.4" class="anchored" data-anchor-id="validating"><span class="header-section-number">2.2.4</span> Validating</h3>
+<p>Until this point, I only used the examples from the StatQuest video. However, these are not the only values we should try out. What about other forms? It could also be that the model just learned to memorize the four input arrays and maps a single value onto each of them.</p>
+<p>To validate if our RNN can actually generalize, let’s change the input data. We’ll still use values which are normalized to 0 - 1, but we’ll change their amplitude.</p>
+<div class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>small_rising <span class="op">=</span> [<span class="dv">0</span>,<span class="fl">0.1</span>]</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>small_constant <span class="op">=</span> [<span class="fl">0.1</span>,<span class="fl">0.1</span>]</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>small_falling <span class="op">=</span> [<span class="dv">1</span>,<span class="fl">0.9</span>]</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>small_curve <span class="op">=</span> [<span class="fl">0.2</span>,<span class="fl">00.1</span>,<span class="fl">0.1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-execution_count="11">
+<div class="cell-output cell-output-display">
+<div id="fig-small-expected" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-small-expected-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;7: Input validation data arrays with the expected continuation</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Our validation data still represents the same shapes, but with different values. This should make it harder for a model that just “fakes” the output by remembering the training data. Let’s see what our RNN does with it.</p>
+<div class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>s1 <span class="op">=</span> rnn.forward(small_rising)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>s2 <span class="op">=</span> rnn.forward(small_constant)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>s3 <span class="op">=</span> rnn.forward(small_falling)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>s4 <span class="op">=</span> rnn.forward(small_curve)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>s1,s2,s3,s4</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<pre><code>(0.2, 0.1, 0.8, 0.2)</code></pre>
+</div>
+</div>
+<div class="cell" data-execution_count="13">
+<div class="cell-output cell-output-display">
+<div id="fig-small-predictions" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-small-predictions-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;8: Input validation data arrays with the model prediction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The model can correctly predict all of our validation data! This means that it can generalize and find some basic patterns in the data and is not just remembering our training dataset. This is quite an achievement. With these few lines of code, we’re able to create a model that can predict any kind of rising / constant / falling sequence of values, without changing any parameter. Imagine how far this approach can go when we scale up the model and increase its complexity!</p>
+</section>
+</section>
+</section>
+<section id="limit-testing" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Limit testing</h1>
+<p>In the real world, stock data is a lot more complicated than our training data so far. Let’s go a step further and see how the model performs on some crazier input data:</p>
+<div class="cell" data-outputid="751a0a43-d642-4da1-bfd7-43da7487fafc" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>data_zic_zac1 <span class="op">=</span> [<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>]</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>data_zic_zac2 <span class="op">=</span> [<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-execution_count="15">
+<div class="cell-output cell-output-display">
+<div id="fig-ziczac-expected" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-ziczac-expected-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;9: Zic-Zac patterns with the expected continuation</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>For a human, this pattern would be straightforward to predict. Let’s see what our RNN does with it.</p>
+<div class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>z1 <span class="op">=</span> rnn.forward(data_zic_zac1)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>z2 <span class="op">=</span> rnn.forward(data_zic_zac2)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>z1, z2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="16">
+<pre><code>(0.0, 2.0)</code></pre>
+</div>
+</div>
+<div class="cell" data-outputid="9b4cf3ac-aad3-4974-92f0-e69c10db43d4" data-execution_count="17">
+<div class="cell-output cell-output-display">
+<div id="fig-ziczac-predictions" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-ziczac-predictions-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;10: Zic-Zac patterns with the model prediction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>It seems like that was too much for our RNN. We can immediately see that something is wrong, the model predicts completely incorrect values. In the second example, they are not even being visualized because the output value is too large to be displayed (maximum is 1).</p>
+</section>
+<section id="summary" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Summary</h1>
+<p>In this article, we took a look at RNNs and what makes them special. They can solve the challenge of handling sequential input data of any size. Moreover, they can predict quite a few patterns with minimal configuration and are very flexible in their use-cases. We took a look at how to implement such a model in Python with pretrained weights and discovered that it works quite well, although it has some limitations.</p>
+</section>
+<section id="part-2" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Part 2</h1>
+<p>Until now, we used the same three weights for all of our predictions and simple linear layers to make the predictions. However, we could use backpropagation to train the model to recognize more patterns like the zic-zac, and we could also increase the number of layers, so it can recognize a wider variety of shapes.</p>
+<p>But how do we actually find the correct weights with backpropagation to improve our model? Why do the three weights we used so far just magically work? We’ll reveal all these mysteries in part 2 of this series…</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
