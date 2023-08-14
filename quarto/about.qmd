@@ -1,0 +1,26 @@
+---
+title: "About"
+image: images/icon.png
+about:
+  template: jolla
+  links:
+      - icon: twitter
+        text: Twitter
+        href: https://twitter.com/MaxWeichart
+        aria-label: Twitter
+      - icon: bookmark-fill
+        text: Substack
+        href: https://mweichart.substack.com/
+        aria-label: Substack
+      - icon: github
+        text: GitHub
+        href: https://github.com/Max-We
+        aria-label: GitHub
+      - icon: linkedin
+        text: LinkedIn
+        href: https://www.linkedin.com/in/maximilian-weichart-70623b212/
+        aria-label: LinkedIn
+
+---
+
+On this blog I'm sharing project implementations and guides on topics related to machine learning.

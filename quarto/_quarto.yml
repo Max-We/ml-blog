@@ -1,0 +1,22 @@
+project:
+  type: website
+
+website:
+  title: "MW does ML"
+  favicon: images/favicon.png
+  image: images/banner.png
+  navbar:
+    logo: images/favicon.png
+    right:
+      - about.qmd
+      - icon: github
+        href: https://github.com/Max-We
+        aria-label: GitHub
+
+format:
+  html:
+    theme: litera
+    css: styles.css
+
+#litera
+#spacelab
