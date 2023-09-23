@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://maximilian-weichart.de/index.html</loc>
+    <lastmod>2023-09-23T07:23:45.030Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maximilian-weichart.de/posts/uninformed-search/index.html</loc>
+    <lastmod>2023-09-23T07:23:44.473Z</lastmod>
+  </url>
+  <url>
     <loc>https://maximilian-weichart.de/posts/rnn-1/index.html</loc>
-    <lastmod>2023-08-14T17:12:02.084Z</lastmod>
+    <lastmod>2023-09-23T07:23:44.115Z</lastmod>
   </url>
   <url>
     <loc>https://maximilian-weichart.de/about.html</loc>
-    <lastmod>2023-08-14T17:12:01.257Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maximilian-weichart.de/index.html</loc>
-    <lastmod>2023-08-14T17:12:01.465Z</lastmod>
+    <lastmod>2023-09-23T07:23:44.802Z</lastmod>
   </url>
 </urlset>

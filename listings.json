@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/uninformed-search/index.html",
       "/posts/rnn-1/index.html"
     ]
   }
