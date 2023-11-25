@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Maximilian Weichart">
-<meta name="dcterms.date" content="2023-11-16">
+<meta name="dcterms.date" content="2023-11-25">
 <meta name="description" content="How can we make Entropy work for - and not against us.">
 
 <title>MW - Simulated Annealing</title>
@@ -178,7 +178,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">November 16, 2023</p>
+        <p class="date">November 25, 2023</p>
       </div>
     </div>
     
@@ -201,7 +201,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#random" id="toc-random" class="nav-link" data-scroll-target="#random"><span class="header-section-number">3.1</span> Random</a></li>
   <li><a href="#sec-b" id="toc-sec-b" class="nav-link" data-scroll-target="#sec-b"><span class="header-section-number">3.2</span> Preference</a></li>
   <li><a href="#sec-c" id="toc-sec-c" class="nav-link" data-scroll-target="#sec-c"><span class="header-section-number">3.3</span> Neighbors</a></li>
-  <li><a href="#entropy" id="toc-entropy" class="nav-link" data-scroll-target="#entropy"><span class="header-section-number">3.4</span> Entropy</a></li>
+  <li><a href="#quality" id="toc-quality" class="nav-link" data-scroll-target="#quality"><span class="header-section-number">3.4</span> Quality</a></li>
   </ul></li>
   <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">4</span> Summary</a></li>
   </ul>
@@ -224,13 +224,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </figure>
 </div>
 <p>It almost seems like most of our real-world problems exist because we want order (low entropy) while the world tends to move toward chaos (high entropy). If we could reverse these laws, even if it’s just for a moment, we could solve so many problems without any effort. If you had a button to inverse Entropy in our example, you could solve the Rubik’s cube by throwing it down the stairs.</p>
-<p>Simulated annealing is a search algorithm that was inspired by the annealing process in physics, which in fact leverages Entropy to solve problems. But how does it do it? Increasing entropy, by its very definition, is just a consequence of probabilities. So to understand the magic, we have to look at the world from a statistical perspective because if we can change the probabilities, we can make Entropy work for - and not against us.</p>
+<p>Simulated annealing is a search algorithm that was inspired by the annealing process in physics, which in fact leverages Entropy to solve problems. But how does it do it? Increasing Entropy, by its very definition, is just a consequence of probabilities. So to understand the magic, we have to look at the world from a statistical perspective because if we can change the probabilities, we can make Entropy work for - and not against us.</p>
 </section>
 <section id="setup" class="level2 page-columns page-full" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="setup"><span class="header-section-number">2</span> Setup</h2>
 <p>Before we try to understand how simulated annealing works, I want to simplify the problem and the tools we use to make it more approachable. When working with informed search algorithms like simulated annealing, you are working with the algorithm itself, which is a function, and also a heuristic (or cost) function. The cost function tells you how far away from your goal you are - not more, not less. It doesn’t say how to get closer, just how bad the current state is. And because it says how close we are to the goal, minimizing it is our main goal.</p>
-<div class="page-columns page-full"><p>Because the Rubik’s cube is such a complicated example, let’s choose a simpler problem for now. Let’s just assume that our cost function is <span class="math inline">\(f(x) = x^{2} + 10 * sin(x)+ 15\)</span><a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>. From now on, we want to minimize the output of this cost function and therefore find a solution for <span class="math inline">\(x\)</span> that makes <span class="math inline">\(f(x)\)</span> as small as possible, ideally <span class="math inline">\(0\)</span>. We can plot how our cost function looks like:</p><div class="no-row-height column-margin column-container"><li id="fn3"><p><sup>3</sup>&nbsp;This function has been randomly chosen and includes a local and global minimum</p></li></div></div>
-<div class="cell" data-execution_count="2">
+<div class="page-columns page-full"><p>Because the Rubik’s cube is such a complicated example, let’s choose a simpler problem for now. Let’s just assume that our cost function<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> is defined as follows:</p><div class="no-row-height column-margin column-container"><li id="fn3"><p><sup>3</sup>&nbsp;This function has been randomly chosen and includes a local and global minimum</p></li></div></div>
+<p><span class="math display">\[f(x) = x^{2} + 10 * sin(x)+ 15\]</span></p>
+<div class="cell" data-execution_count="99">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> f(x):</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x<span class="op">**</span><span class="dv">2</span> <span class="op">+</span> <span class="dv">10</span> <span class="op">*</span> np.sin(x) <span class="op">+</span> <span class="dv">15</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>From now on, we want to minimize the output of this cost function and therefore find a solution for <span class="math inline">\(x\)</span> that makes <span class="math inline">\(f(x)\)</span> as small as possible, ideally <span class="math inline">\(0\)</span>. We can plot how our cost function looks like:</p>
+<div class="cell" data-execution_count="100">
 <div class="cell-output cell-output-display">
 <div id="fig-f-of-x" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -246,25 +252,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="random" class="level3" data-number="3.1">
 <h3 data-number="3.1" class="anchored" data-anchor-id="random"><span class="header-section-number">3.1</span> Random</h3>
 <p>To solve this problem and to understand how simulated annealing does it so well, we should look at it from a statistical perspective. Perhaps the simplest approach to finding a solution is to pick a value randomly. How high would the probability of finding the global minimum at around -1.5 be? We can visualize this strategy using a probability density function (PDF).</p>
-<div class="cell" data-execution_count="3">
-<div class="sourceCode cell-code" id="annotated-cell-1"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-1-1"><a href="#annotated-cell-1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_a(f, iterations):</span>
-<span id="annotated-cell-1-2"><a href="#annotated-cell-1-2" aria-hidden="true" tabindex="-1"></a>  x_values <span class="op">=</span> []</span>
-<span id="annotated-cell-1-3"><a href="#annotated-cell-1-3" aria-hidden="true" tabindex="-1"></a>  y_values <span class="op">=</span> []</span>
-<span id="annotated-cell-1-4"><a href="#annotated-cell-1-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-1" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-1-5" class="code-annotation-target"><a href="#annotated-cell-1-5" aria-hidden="true" tabindex="-1"></a>    x_values.append(random.uniform(<span class="op">-</span><span class="dv">20</span>, <span class="dv">20</span>))</span>
-<span id="annotated-cell-1-6"><a href="#annotated-cell-1-6" aria-hidden="true" tabindex="-1"></a>    y_values.append(f(x_values[t]))</span>
-<span id="annotated-cell-1-7"><a href="#annotated-cell-1-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-1-8"><a href="#annotated-cell-1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x_values, y_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="101">
+<div class="sourceCode cell-code" id="annotated-cell-2"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-2-1"><a href="#annotated-cell-2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_a(f, iterations):</span>
+<span id="annotated-cell-2-2"><a href="#annotated-cell-2-2" aria-hidden="true" tabindex="-1"></a>  x_values <span class="op">=</span> []</span>
+<span id="annotated-cell-2-3"><a href="#annotated-cell-2-3" aria-hidden="true" tabindex="-1"></a>  y_values <span class="op">=</span> []</span>
+<span id="annotated-cell-2-4"><a href="#annotated-cell-2-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-2" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-2-5" class="code-annotation-target"><a href="#annotated-cell-2-5" aria-hidden="true" tabindex="-1"></a>    x_values.append(random.uniform(<span class="op">-</span><span class="dv">20</span>, <span class="dv">20</span>))</span>
+<span id="annotated-cell-2-6"><a href="#annotated-cell-2-6" aria-hidden="true" tabindex="-1"></a>    y_values.append(f(x_values[t]))</span>
+<span id="annotated-cell-2-7"><a href="#annotated-cell-2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-2-8"><a href="#annotated-cell-2-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x_values, y_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-annotation">
 <dl class="code-annotation-container-grid">
-<dt data-target-cell="annotated-cell-1" data-target-annotation="1">1</dt>
+<dt data-target-cell="annotated-cell-2" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-cell="annotated-cell-1" data-code-annotation="1" data-code-lines="5">At each timestep we just select a random <span class="math inline">\(x\)</span> for our function</span>
+<span data-code-cell="annotated-cell-2" data-code-annotation="1" data-code-lines="5">At each timestep we just select a random <span class="math inline">\(x\)</span> for our function</span>
 </dd>
 </dl>
 </div>
 </div>
-<div class="cell" data-execution_count="4">
+<div class="cell" data-execution_count="102">
 <div class="cell-output cell-output-display">
 <div id="fig-pdf-random" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -279,30 +285,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="sec-b" class="level3" data-number="3.2">
 <h3 data-number="3.2" class="anchored" data-anchor-id="sec-b"><span class="header-section-number">3.2</span> Preference</h3>
 <p>To find the ideal solution more reliably, we could define our algorithm in a way, that it’s more likely that a cost-improvement will be accepted rather than a regression. The simplest way would be to accept worse solutions only sometimes, say 50% of the time:</p>
-<div class="cell" data-execution_count="5">
-<div class="sourceCode cell-code" id="annotated-cell-2"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-2-1"><a href="#annotated-cell-2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_b(f, iterations, initial_x):</span>
-<span id="annotated-cell-2-2"><a href="#annotated-cell-2-2" aria-hidden="true" tabindex="-1"></a>  x_values <span class="op">=</span> [initial_x]</span>
-<span id="annotated-cell-2-3"><a href="#annotated-cell-2-3" aria-hidden="true" tabindex="-1"></a>  y_values <span class="op">=</span> [f(initial_x)]</span>
-<span id="annotated-cell-2-4"><a href="#annotated-cell-2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-2-5"><a href="#annotated-cell-2-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
-<span id="annotated-cell-2-6"><a href="#annotated-cell-2-6" aria-hidden="true" tabindex="-1"></a>    current_x, current_y <span class="op">=</span> x_values[<span class="bu">len</span>(x_values)<span class="op">-</span><span class="dv">1</span>], y_values[<span class="bu">len</span>(y_values)<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="annotated-cell-2-7"><a href="#annotated-cell-2-7" aria-hidden="true" tabindex="-1"></a>    new_x <span class="op">=</span> random.uniform(<span class="op">-</span><span class="dv">20</span>, <span class="dv">20</span>)</span>
-<span id="annotated-cell-2-8"><a href="#annotated-cell-2-8" aria-hidden="true" tabindex="-1"></a>    new_y <span class="op">=</span> f(new_x)</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-2" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-2-9" class="code-annotation-target"><a href="#annotated-cell-2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> new_y <span class="op">&lt;</span> current_y <span class="kw">or</span> random.random() <span class="op">&lt;</span> <span class="fl">0.50</span>:</span>
-<span id="annotated-cell-2-10"><a href="#annotated-cell-2-10" aria-hidden="true" tabindex="-1"></a>      x_values.append(new_x)</span>
-<span id="annotated-cell-2-11"><a href="#annotated-cell-2-11" aria-hidden="true" tabindex="-1"></a>      y_values.append(new_y)</span>
-<span id="annotated-cell-2-12"><a href="#annotated-cell-2-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-2-13"><a href="#annotated-cell-2-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x_values, y_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="103">
+<div class="sourceCode cell-code" id="annotated-cell-3"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-3-1"><a href="#annotated-cell-3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_b(f, iterations, initial_x):</span>
+<span id="annotated-cell-3-2"><a href="#annotated-cell-3-2" aria-hidden="true" tabindex="-1"></a>  x_values <span class="op">=</span> [initial_x]</span>
+<span id="annotated-cell-3-3"><a href="#annotated-cell-3-3" aria-hidden="true" tabindex="-1"></a>  y_values <span class="op">=</span> [f(initial_x)]</span>
+<span id="annotated-cell-3-4"><a href="#annotated-cell-3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-3-5"><a href="#annotated-cell-3-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
+<span id="annotated-cell-3-6"><a href="#annotated-cell-3-6" aria-hidden="true" tabindex="-1"></a>    current_x, current_y <span class="op">=</span> x_values[<span class="op">-</span><span class="dv">1</span>], y_values[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="annotated-cell-3-7"><a href="#annotated-cell-3-7" aria-hidden="true" tabindex="-1"></a>    new_x <span class="op">=</span> random.uniform(<span class="op">-</span><span class="dv">20</span>, <span class="dv">20</span>)</span>
+<span id="annotated-cell-3-8"><a href="#annotated-cell-3-8" aria-hidden="true" tabindex="-1"></a>    new_y <span class="op">=</span> f(new_x)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-3-9" class="code-annotation-target"><a href="#annotated-cell-3-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> new_y <span class="op">&lt;</span> current_y <span class="kw">or</span> random.random() <span class="op">&lt;</span> <span class="fl">0.50</span>:</span>
+<span id="annotated-cell-3-10"><a href="#annotated-cell-3-10" aria-hidden="true" tabindex="-1"></a>      x_values.append(new_x)</span>
+<span id="annotated-cell-3-11"><a href="#annotated-cell-3-11" aria-hidden="true" tabindex="-1"></a>      y_values.append(new_y)</span>
+<span id="annotated-cell-3-12"><a href="#annotated-cell-3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-3-13"><a href="#annotated-cell-3-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x_values, y_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-annotation">
 <dl class="code-annotation-container-grid">
-<dt data-target-cell="annotated-cell-2" data-target-annotation="1">1</dt>
+<dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-cell="annotated-cell-2" data-code-annotation="1" data-code-lines="9">Only accept “worse” solutions 50% of the time</span>
+<span data-code-cell="annotated-cell-3" data-code-annotation="1" data-code-lines="9">Only accept “worse” solutions 50% of the time</span>
 </dd>
 </dl>
 </div>
 </div>
-<div class="cell" data-execution_count="6">
+<div class="cell" data-execution_count="104">
 <div class="cell-output cell-output-display">
 <div id="fig-pdf-preference" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -314,33 +320,33 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>It looks like this strategy helped the algorithm to identify the global minimum more reliably, but it’s still yielding many wrong results.</p>
 </section>
-<section id="sec-c" class="level3" data-number="3.3">
+<section id="sec-c" class="level3 page-columns page-full" data-number="3.3">
 <h3 data-number="3.3" class="anchored" data-anchor-id="sec-c"><span class="header-section-number">3.3</span> Neighbors</h3>
 <p>The current implementation is inefficient because the progress we made at identifying the best solution will be reset on every time step. Imagine trying to solve a Rubik’s cube, but instead of slowly building up your solution, you choose an entirely new configuration every time you make a turn, instead of improving the current one. So instead of choosing an entirely new solution every time we make a move, let’s only consider neighboring solutions, that is solutions within a certain interval of the current one. Only considering neighboring states is one important concept that simulated annealing employs.</p>
-<div class="cell" data-execution_count="7">
-<div class="sourceCode cell-code" id="annotated-cell-3"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-3-1"><a href="#annotated-cell-3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_c(f, iterations, initial_x, p):</span>
-<span id="annotated-cell-3-2"><a href="#annotated-cell-3-2" aria-hidden="true" tabindex="-1"></a>  x_values <span class="op">=</span> [initial_x]</span>
-<span id="annotated-cell-3-3"><a href="#annotated-cell-3-3" aria-hidden="true" tabindex="-1"></a>  y_values <span class="op">=</span> [f(initial_x)]</span>
-<span id="annotated-cell-3-4"><a href="#annotated-cell-3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-3-5"><a href="#annotated-cell-3-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
-<span id="annotated-cell-3-6"><a href="#annotated-cell-3-6" aria-hidden="true" tabindex="-1"></a>    current_x, current_y <span class="op">=</span> x_values[<span class="bu">len</span>(x_values)<span class="op">-</span><span class="dv">1</span>], y_values[<span class="bu">len</span>(y_values)<span class="op">-</span><span class="dv">1</span>]</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-3" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-3-7" class="code-annotation-target"><a href="#annotated-cell-3-7" aria-hidden="true" tabindex="-1"></a>    new_x <span class="op">=</span> x_values[<span class="bu">len</span>(x_values)<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> random.uniform(<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
-<span id="annotated-cell-3-8"><a href="#annotated-cell-3-8" aria-hidden="true" tabindex="-1"></a>    new_y <span class="op">=</span> f(new_x)</span>
-<span id="annotated-cell-3-9"><a href="#annotated-cell-3-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> new_y <span class="op">&lt;</span> current_y <span class="kw">or</span> random.random() <span class="op">&lt;</span> p:</span>
-<span id="annotated-cell-3-10"><a href="#annotated-cell-3-10" aria-hidden="true" tabindex="-1"></a>      x_values.append(new_x)</span>
-<span id="annotated-cell-3-11"><a href="#annotated-cell-3-11" aria-hidden="true" tabindex="-1"></a>      y_values.append(new_y)</span>
-<span id="annotated-cell-3-12"><a href="#annotated-cell-3-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-3-13"><a href="#annotated-cell-3-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x_values, y_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="105">
+<div class="sourceCode cell-code" id="annotated-cell-4"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-4-1"><a href="#annotated-cell-4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_c(f, iterations, initial_x, p):</span>
+<span id="annotated-cell-4-2"><a href="#annotated-cell-4-2" aria-hidden="true" tabindex="-1"></a>  x_values <span class="op">=</span> [initial_x]</span>
+<span id="annotated-cell-4-3"><a href="#annotated-cell-4-3" aria-hidden="true" tabindex="-1"></a>  y_values <span class="op">=</span> [f(initial_x)]</span>
+<span id="annotated-cell-4-4"><a href="#annotated-cell-4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-4-5"><a href="#annotated-cell-4-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
+<span id="annotated-cell-4-6"><a href="#annotated-cell-4-6" aria-hidden="true" tabindex="-1"></a>    current_x, current_y <span class="op">=</span> x_values[<span class="op">-</span><span class="dv">1</span>], y_values[<span class="op">-</span><span class="dv">1</span>]</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-4-7" class="code-annotation-target"><a href="#annotated-cell-4-7" aria-hidden="true" tabindex="-1"></a>    new_x <span class="op">=</span> current_x <span class="op">+</span> random.uniform(<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="annotated-cell-4-8"><a href="#annotated-cell-4-8" aria-hidden="true" tabindex="-1"></a>    new_y <span class="op">=</span> f(new_x)</span>
+<span id="annotated-cell-4-9"><a href="#annotated-cell-4-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> new_y <span class="op">&lt;</span> current_y <span class="kw">or</span> random.random() <span class="op">&lt;</span> p:</span>
+<span id="annotated-cell-4-10"><a href="#annotated-cell-4-10" aria-hidden="true" tabindex="-1"></a>      x_values.append(new_x)</span>
+<span id="annotated-cell-4-11"><a href="#annotated-cell-4-11" aria-hidden="true" tabindex="-1"></a>      y_values.append(new_y)</span>
+<span id="annotated-cell-4-12"><a href="#annotated-cell-4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-4-13"><a href="#annotated-cell-4-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x_values, y_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-annotation">
 <dl class="code-annotation-container-grid">
-<dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
+<dt data-target-cell="annotated-cell-4" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-cell="annotated-cell-3" data-code-annotation="1" data-code-lines="7">Only consider neighbouring values of the current states by reducing the interval that we sample from to <span class="math inline">\([-1, 1]\)</span></span>
+<span data-code-cell="annotated-cell-4" data-code-annotation="1" data-code-lines="7">Only consider neighboring values of the current states by reducing the interval that we sample from to <span class="math inline">\([-1, 1]\)</span>, which are the neighboring states only. If we were to sample from <span class="math inline">\([-20, 20]\)</span> like before, we’d lose our progress at every step.</span>
 </dd>
 </dl>
 </div>
 </div>
-<div class="cell" data-execution_count="8">
+<div class="cell" data-execution_count="106">
 <div class="cell-output cell-output-display">
 <div id="fig-pdf-neighbour" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -350,53 +356,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>As you can see, the probability that the algorithm yields the correct solution is a lot higher than for any other value. But it’s still not guaranteed, and a lot of the time it returns wrong answers. The variance is still too high. Ideally, we’d always want the highest point of the probability density function to be returned as our solution and ignore all the other values. However, we can’t just set the probability of accepting a worse solution to 0 because this would lead to the local optimum quite often. Once we’re in the local optimum and don’t accept “worse” solutions anymore, there’d be no way out. So we have to find another approach to lead us to the global optimum.</p>
-<p>How can we solve this? Instead of immediately setting the acceptance probability for worse states to 0%, we could start at 100% and gradually decrease it. Every time we decrease the probability, we become a little more deterministic and in that way we reject bad solutions more often gradually: At first, we reject the ridiculous solutions, like configurations of a Rubik’s cube that are completely mixed. After that, we lower the threshold of good solutions even further, so of all the not-so-bad solutions, we accept only the better ones.</p>
-<p>We can imagine this process like filtering out the best solution gradually. The state space for the Rubik’s cube could be represented in the following image. At a high acceptance-probability, we do the rough work, filtering out all the terrible configurations, resulting in a better subset of configurations. After that, we refine our search, filtering out the even better solutions from our previous subset. We refine this process even further until we arrive at a 0% acceptance probability for worse solutions, at which point we just pick the perfect fit.</p>
+<p>As you can see, the probability that the algorithm yields the correct solution is a lot higher than for any other value. But it’s still not guaranteed, and a lot of the time it returns wrong answers. The variance is still too high. Ideally, we’d always want the highest point of the probability density function to be returned as our solution and ignore all the other values. However, we can’t just set the probability of accepting a worse state to 0 because this would lead to the local optimum quite often. Once we’re in the local optimum and don’t accept “worse” states anymore, there’d be no way out. So we have to find another approach to lead us to the global optimum.</p>
+<p>How can we solve this? Instead of immediately setting the acceptance probability for worse states to 0%, we could start at 100% and gradually decrease it. Every time we decrease the probability, we become a little more deterministic and in that way we reject bad states more often gradually: At first, we reject the ridiculous states, like configurations of a Rubik’s cube that are completely mixed. After that, we lower the threshold of good states even further, so of all the not-so-bad states, we accept only the better ones.</p>
+<p>We can imagine this process like filtering out the best solution gradually. The state space for the Rubik’s cube could be represented in the following image. At a high acceptance-probability, we do the rough work, filtering out all the terrible configurations, resulting in a better subset of configurations. After that, we refine our search, filtering out the even better states from our previous subset. We refine this process even further until we arrive at a 0% acceptance probability for worse states, at which point we just pick the perfect fit.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="./step-search.png" class="img-fluid figure-img"></p>
 <figcaption class="figure-caption">Filtering step by step. Each rectangle represents a step in the filtering process which is getting refined gradually. The filtering continues until only the solution state remains.</figcaption>
 </figure>
 </div>
-<p>This process works like a sieve: at each step we increase the quality and build upon our previous work. If decrease the granularity too fast, bad results will occur, but if we do it carefully enough, we’re almost guaranteed to find the solution given enough time. If we were to keep the temperature fixed at a low value, we’d have countless hit-or-miss results because we focus in on one particular configuration, but we’re lacking the filtering of all the bad configurations before. If we kept it fixed at a high level, we’d lack the refinement filtering, meaning that we come up with suboptimal solutions that could be improved a lot, but we stopped before.</p>
-<p>From now on, we’ll call this probability “Temperature” because that’s the term used in the simulated annealing algorithm. In our code, it’s written as <code>t</code>:</p>
-<div class="cell" data-execution_count="9">
-<div class="sourceCode cell-code" id="annotated-cell-4"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-4-1"><a href="#annotated-cell-4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_d(f, iterations, initial_x):</span>
-<span id="annotated-cell-4-2"><a href="#annotated-cell-4-2" aria-hidden="true" tabindex="-1"></a>    x_values <span class="op">=</span> [initial_x]</span>
-<span id="annotated-cell-4-3"><a href="#annotated-cell-4-3" aria-hidden="true" tabindex="-1"></a>    y_values <span class="op">=</span> [f(initial_x)]</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-4-4" class="code-annotation-target"><a href="#annotated-cell-4-4" aria-hidden="true" tabindex="-1"></a>    t_values <span class="op">=</span> [<span class="dv">1</span>]</span>
-<span id="annotated-cell-4-5"><a href="#annotated-cell-4-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-4-6"><a href="#annotated-cell-4-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
-<span id="annotated-cell-4-7"><a href="#annotated-cell-4-7" aria-hidden="true" tabindex="-1"></a>        current_x, current_y <span class="op">=</span> x_values[<span class="op">-</span><span class="dv">1</span>], y_values[<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="annotated-cell-4-8"><a href="#annotated-cell-4-8" aria-hidden="true" tabindex="-1"></a>        new_x <span class="op">=</span> current_x <span class="op">+</span> random.uniform(<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
-<span id="annotated-cell-4-9"><a href="#annotated-cell-4-9" aria-hidden="true" tabindex="-1"></a>        new_y <span class="op">=</span> f(new_x)</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-4-10" class="code-annotation-target"><a href="#annotated-cell-4-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> new_y <span class="op">&lt;</span> current_y <span class="kw">or</span> random.random() <span class="op">&lt;</span> t_values[<span class="op">-</span><span class="dv">1</span>]:</span>
-<span id="annotated-cell-4-11"><a href="#annotated-cell-4-11" aria-hidden="true" tabindex="-1"></a>            x_values.append(new_x)</span>
-<span id="annotated-cell-4-12"><a href="#annotated-cell-4-12" aria-hidden="true" tabindex="-1"></a>            y_values.append(new_y)</span>
-<span id="annotated-cell-4-13"><a href="#annotated-cell-4-13" aria-hidden="true" tabindex="-1"></a></span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-4" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-4-14" class="code-annotation-target"><a href="#annotated-cell-4-14" aria-hidden="true" tabindex="-1"></a>        t_values.append(<span class="dv">1</span> <span class="op">-</span> k <span class="op">/</span> iterations)</span>
-<span id="annotated-cell-4-15"><a href="#annotated-cell-4-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-4-16"><a href="#annotated-cell-4-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x_values, y_values, t_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>This process works like a sieve: at each step we increase the quality and build upon our previous work. If we were to keep the acceptance-probability low, we’d have countless hit-or-miss results because we focus in on one particular configuration, before filtering out all the bad states. If we kept it fixed at a high value, we’d never arrive at an excellent solution because we’d never “filter” out the bad states.</p>
+<div class="page-columns page-full"><p>From now on, we’ll call this probability of accepting worse states “Temperature” because that’s the term used in the simulated annealing algorithm<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>. In our code, it’s written as <code>t</code>:</p><div class="no-row-height column-margin column-container"><li id="fn4"><p><sup>4</sup>&nbsp;Later we’ll expand this definition, but for now, it’s just called the Temperature.</p></li></div></div>
+<div class="cell" data-execution_count="107">
+<div class="sourceCode cell-code" id="annotated-cell-5"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-5-1"><a href="#annotated-cell-5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> algorithm_d(f, iterations, initial_x):</span>
+<span id="annotated-cell-5-2"><a href="#annotated-cell-5-2" aria-hidden="true" tabindex="-1"></a>    x_values <span class="op">=</span> [initial_x]</span>
+<span id="annotated-cell-5-3"><a href="#annotated-cell-5-3" aria-hidden="true" tabindex="-1"></a>    y_values <span class="op">=</span> [f(initial_x)]</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-5-4" class="code-annotation-target"><a href="#annotated-cell-5-4" aria-hidden="true" tabindex="-1"></a>    t_values <span class="op">=</span> [<span class="dv">1</span>]</span>
+<span id="annotated-cell-5-5"><a href="#annotated-cell-5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-6"><a href="#annotated-cell-5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
+<span id="annotated-cell-5-7"><a href="#annotated-cell-5-7" aria-hidden="true" tabindex="-1"></a>        current_x, current_y <span class="op">=</span> x_values[<span class="op">-</span><span class="dv">1</span>], y_values[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="annotated-cell-5-8"><a href="#annotated-cell-5-8" aria-hidden="true" tabindex="-1"></a>        new_x <span class="op">=</span> current_x <span class="op">+</span> random.uniform(<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="annotated-cell-5-9"><a href="#annotated-cell-5-9" aria-hidden="true" tabindex="-1"></a>        new_y <span class="op">=</span> f(new_x)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-5-10" class="code-annotation-target"><a href="#annotated-cell-5-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> new_y <span class="op">&lt;</span> current_y <span class="kw">or</span> random.random() <span class="op">&lt;</span> t_values[<span class="op">-</span><span class="dv">1</span>]:</span>
+<span id="annotated-cell-5-11"><a href="#annotated-cell-5-11" aria-hidden="true" tabindex="-1"></a>            x_values.append(new_x)</span>
+<span id="annotated-cell-5-12"><a href="#annotated-cell-5-12" aria-hidden="true" tabindex="-1"></a>            y_values.append(new_y)</span>
+<span id="annotated-cell-5-13"><a href="#annotated-cell-5-13" aria-hidden="true" tabindex="-1"></a></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-5-14" class="code-annotation-target"><a href="#annotated-cell-5-14" aria-hidden="true" tabindex="-1"></a>        t_values.append(<span class="dv">1</span> <span class="op">-</span> k <span class="op">/</span> iterations)</span>
+<span id="annotated-cell-5-15"><a href="#annotated-cell-5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-5-16"><a href="#annotated-cell-5-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x_values, y_values, t_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-annotation">
 <dl class="code-annotation-container-grid">
-<dt data-target-cell="annotated-cell-4" data-target-annotation="1">1</dt>
+<dt data-target-cell="annotated-cell-5" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-cell="annotated-cell-4" data-code-annotation="1" data-code-lines="4">We start with a temperature of 1 (100% acceptance probability)</span>
+<span data-code-cell="annotated-cell-5" data-code-annotation="1" data-code-lines="4">We start with a temperature of 1 (100% acceptance probability)</span>
 </dd>
-<dt data-target-cell="annotated-cell-4" data-target-annotation="2">2</dt>
+<dt data-target-cell="annotated-cell-5" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-cell="annotated-cell-4" data-code-annotation="2" data-code-lines="10">This change means the same as in our previous algorithms. Because we save the temperatures in an array (for visualization), we want to consider the latest entry.</span>
+<span data-code-cell="annotated-cell-5" data-code-annotation="2" data-code-lines="10">This change means the same as in our previous algorithms. Because we save the temperatures in an array (for visualization), we want to consider the latest entry.</span>
 </dd>
-<dt data-target-cell="annotated-cell-4" data-target-annotation="3">3</dt>
+<dt data-target-cell="annotated-cell-5" data-target-annotation="3">3</dt>
 <dd>
-<span data-code-cell="annotated-cell-4" data-code-annotation="3" data-code-lines="14">We decrease the temperature linearly</span>
+<span data-code-cell="annotated-cell-5" data-code-annotation="3" data-code-lines="14">We decrease the temperature linearly</span>
 </dd>
 </dl>
 </div>
 </div>
 <p>The results of this algorithm look as follows:</p>
-<div class="cell" data-execution_count="10">
+<div class="cell" data-execution_count="108">
 <div class="cell-output cell-output-display">
 <div id="fig-pdf-temperature" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -407,7 +413,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>We can compare this to the solutions for different temperatures from <code>algorithm_c</code> in <a href="#sec-c">Section&nbsp;3.3</a> with different fixed temperatures:</p>
-<div class="cell" data-execution_count="11">
+<div class="cell" data-execution_count="117">
 <div class="cell-output cell-output-display">
 <div id="fig-pdf-temperature-variations" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
@@ -431,21 +437,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </figure>
 </div>
 </section>
-<section id="entropy" class="level3 page-columns page-full" data-number="3.4">
-<h3 data-number="3.4" class="anchored" data-anchor-id="entropy"><span class="header-section-number">3.4</span> Entropy</h3>
+<section id="quality" class="level3 page-columns page-full" data-number="3.4">
+<h3 data-number="3.4" class="anchored" data-anchor-id="quality"><span class="header-section-number">3.4</span> Quality</h3>
 <p>All the strategies we adapted so far lead to some good results. However, dropping the acceptance probability linearly is a simplification and is rarely the case in reality. You could think about what it’s like writing an essay: The outline probably takes less time than all the revisions and details. This is also known as the Pareto Rule (or 80-20 principle) and it shows that to be optimal, we need a more accurate approach for lowering the acceptance probability.</p>
 <p>To solve this, we could come up with different temperature schedules, like a geometric decay. However, this doesn’t address the underlying problem and may only work for some cases.</p>
-<p>Let’s think about what the acceptance probability is supposed to do: It should tell us how likely the state that we’re observing is getting us closer to the solution. And the solution in our case is the most likely outcome, as we can see in <a href="#fig-pdf-temperature">Figure&nbsp;5</a>. The thing we really want to know to be optimal is, how likely is it that our system is in the state that we’re observing? So if we know how likely a state is, then we know how good, that is how close to the solution it is.</p>
+<p>Thus far, our acceptance probability was equal to the temperature when considering “worse” states. That means, that, no matter how bad the new state is, we will always accept it with a fixed probability (given by the current temperature). However, it could be quite efficient to take the quality of this worse state into consideration. For example, when solving a Rubik’s Cube, we prefer “bad” states over “terrible” states. So we should decrease the acceptance probability for states as they approach “terrible”.</p>
+<p>The question becomes, how could we express this as a formula? Obviously, we want to integrate <span class="math inline">\(\Delta Cost\)</span> (the difference between <code>y_old</code> and <code>y_new</code>) into our acceptance probability, as this tells us how “bad” the proposed state is. However, <span class="math inline">\(\Delta Cost\)</span> can have any value in the range <span class="math inline">\([0, \inf[\)</span> so to normalize it as a probability, there’s a simple trick. We’ll just plug it into the function <span class="math inline">\(e^{-x}\)</span>.</p>
+<div class="cell" data-execution_count="111">
+<div class="cell-output cell-output-display">
+<div id="fig-e-of-x" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-e-of-x-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;7: <span class="math inline">\(e^{-x}\)</span> plotted from 0 to 5”</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>This normalizes the value of <span class="math inline">\(\Delta Cost\)</span> to <span class="math inline">\([0, 1]\)</span> and <span class="math inline">\(e^{- \Delta Cost}\)</span> can therefore be used as a probability.</p>
+<p>The only thing left to do it so integrate the temperature <span class="math inline">\(T\)</span> into the formula. Just like <span class="math inline">\(\Delta Cost\)</span>, we know that <span class="math inline">\(T\)</span> can be in the range of <span class="math inline">\([0, \inf[\)</span>, however in contrast to <span class="math inline">\(\Delta Cost\)</span>, a high <span class="math inline">\(T\)</span> should result in a high acceptance probability. To add <span class="math inline">\(T\)</span> into the equation, we can divide <span class="math inline">\(\Delta Cost\)</span> in the exponent by <span class="math inline">\(T\)</span>. This can be expressed as the following formula:</p>
+<p><span class="math display">\[
+e^{-\frac{\Delta Cost}{T}}
+\]</span></p>
+<p>Dividing by <span class="math inline">\(T\)</span> effectively “weakens” the effect of <span class="math inline">\(\Delta C\)</span> when <span class="math inline">\(T\)</span> is high, resulting in a high acceptance probability.</p>
 <section id="boltzmann-distribution" class="level4 page-columns page-full" data-number="3.4.1">
 <h4 data-number="3.4.1" class="anchored" data-anchor-id="boltzmann-distribution"><span class="header-section-number">3.4.1</span> Boltzmann distribution</h4>
-<div class="page-columns page-full"><p>The Boltzmann distribution gives us exactly that: it is a probability distribution that gives the probability that a system will be in a certain state as a function of that state’s energy and the temperature of the system<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>. It is defined as:</p><div class="no-row-height column-margin column-container"><li id="fn4"><p><sup>4</sup>&nbsp;Source: <a href="https://en.wikipedia.org/wiki/Boltzmann_distribution">Wikipedia</a></p></li></div></div>
+<p>The above explanation serves as an intuitive approach to simulated annealing. If you’re satisfied with this explanation, you can skip this section and jump right to the implementation in <a href="#sec-sa">Section&nbsp;3.4.3</a>, if not, here’s my attempt to illustrate it with the theoretical background as well.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>To be humble, I am not convinced that my understanding of the Boltzmann Distribution in simulated annealing is sufficient at this point. However, I decided to include this part in the article to encourage feedback and discussions about this concept so that I can ultimately learn and understand it better. My goal is therefore not to provide a perfect answer right now, but to improve this explanation in the future through your participation!</p>
+</div>
+</div>
+<p>Let’s think about what the acceptance probability is supposed to do: It should tell us how likely the state that we’re observing is getting us closer to the solution. And the solution in our case is the most likely outcome, as we can see in <a href="#fig-pdf-temperature">Figure&nbsp;5</a>. The thing we really want to know to be optimal is, how likely is it that our system is in the state that we’re observing? So if we know how likely a state is, then we know how good, that is how close to the solution it is.</p>
+<div class="page-columns page-full"><p>The Boltzmann distribution gives us exactly that: it is a probability distribution that gives the probability that a system will be in a certain state as a function of that state’s energy and the temperature of the system<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>. It is defined as:</p><div class="no-row-height column-margin column-container"><li id="fn5"><p><sup>5</sup>&nbsp;Source: <a href="https://en.wikipedia.org/wiki/Boltzmann_distribution">Wikipedia</a></p></li></div></div>
 <p><span class="math display">\[
 p_i \propto e^{- \frac{\varepsilon_i}{kT}}
 \]</span></p>
 <ul>
 <li><span class="math inline">\(\varepsilon_i\)</span>: Energy at a specific state <span class="math inline">\(i\)</span>
 <ul>
-<li>in our example “energy” = “cost” = y-value</li>
+<li>in our example “energy” = “cost” = y-value, or as previously defined: <span class="math inline">\(\Delta E = \Delta Cost\)</span></li>
 </ul></li>
 <li><span class="math inline">\(T\)</span>: Temperature</li>
 <li><span class="math inline">\(k\)</span>: Boltzmann constant, can be ignored and assumed to be <span class="math inline">\(1\)</span></li>
@@ -464,48 +502,51 @@ e^{-\frac{\Delta E}{T}}
 </ul></li>
 </ul>
 <p>So all we have to do now is plugging in the temperature and cost into the equation for the Boltzmann factor and use it as the acceptance probability when evaluating the states. This gives us the simulated annealing algorithm.</p>
-<div class="cell" data-execution_count="13">
-<div class="sourceCode cell-code" id="annotated-cell-5"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-5-1"><a href="#annotated-cell-5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> simulated_annealing(f, iterations, initial_x):</span>
-<span id="annotated-cell-5-2"><a href="#annotated-cell-5-2" aria-hidden="true" tabindex="-1"></a>    x_values <span class="op">=</span> [initial_x]</span>
-<span id="annotated-cell-5-3"><a href="#annotated-cell-5-3" aria-hidden="true" tabindex="-1"></a>    y_values <span class="op">=</span> [f(initial_x)]</span>
-<span id="annotated-cell-5-4"><a href="#annotated-cell-5-4" aria-hidden="true" tabindex="-1"></a>    t_values <span class="op">=</span> [<span class="dv">1</span>]</span>
-<span id="annotated-cell-5-5"><a href="#annotated-cell-5-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-5-6"><a href="#annotated-cell-5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
-<span id="annotated-cell-5-7"><a href="#annotated-cell-5-7" aria-hidden="true" tabindex="-1"></a>        current_x, current_y <span class="op">=</span> x_values[<span class="op">-</span><span class="dv">1</span>], y_values[<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="annotated-cell-5-8"><a href="#annotated-cell-5-8" aria-hidden="true" tabindex="-1"></a>        new_x <span class="op">=</span> current_x <span class="op">+</span> random.uniform(<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
-<span id="annotated-cell-5-9"><a href="#annotated-cell-5-9" aria-hidden="true" tabindex="-1"></a>        new_y <span class="op">=</span> f(new_x)</span>
-<span id="annotated-cell-5-10"><a href="#annotated-cell-5-10" aria-hidden="true" tabindex="-1"></a>        </span>
-<span id="annotated-cell-5-11"><a href="#annotated-cell-5-11" aria-hidden="true" tabindex="-1"></a>        delta_e <span class="op">=</span> new_y <span class="op">-</span> current_y</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-5-12" class="code-annotation-target"><a href="#annotated-cell-5-12" aria-hidden="true" tabindex="-1"></a>        p <span class="op">=</span> exp(<span class="op">-</span>(delta_e)<span class="op">/</span>t_values[<span class="op">-</span><span class="dv">1</span>])</span>
-<span id="annotated-cell-5-13"><a href="#annotated-cell-5-13" aria-hidden="true" tabindex="-1"></a>        </span>
-<span id="annotated-cell-5-14"><a href="#annotated-cell-5-14" aria-hidden="true" tabindex="-1"></a>        p_values.append(p)</span>
-<a class="code-annotation-anchor" data-target-cell="annotated-cell-5" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-5-15" class="code-annotation-target"><a href="#annotated-cell-5-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> delta_e <span class="op">&lt;</span> <span class="dv">0</span> <span class="kw">or</span> random.random() <span class="op">&lt;</span> p:</span>
-<span id="annotated-cell-5-16"><a href="#annotated-cell-5-16" aria-hidden="true" tabindex="-1"></a>            x_values.append(new_x)</span>
-<span id="annotated-cell-5-17"><a href="#annotated-cell-5-17" aria-hidden="true" tabindex="-1"></a>            y_values.append(new_y)</span>
-<span id="annotated-cell-5-18"><a href="#annotated-cell-5-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-5-19"><a href="#annotated-cell-5-19" aria-hidden="true" tabindex="-1"></a>        t_values.append(<span class="dv">1</span> <span class="op">-</span> k <span class="op">/</span> iterations)</span>
-<span id="annotated-cell-5-20"><a href="#annotated-cell-5-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="annotated-cell-5-21"><a href="#annotated-cell-5-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x_values, y_values, t_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="sec-sa" class="level4" data-number="3.4.3">
+<h4 data-number="3.4.3" class="anchored" data-anchor-id="sec-sa"><span class="header-section-number">3.4.3</span> Implementation</h4>
+<div class="cell" data-execution_count="112">
+<div class="sourceCode cell-code" id="annotated-cell-6"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-6-1"><a href="#annotated-cell-6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> simulated_annealing(f, iterations, initial_x):</span>
+<span id="annotated-cell-6-2"><a href="#annotated-cell-6-2" aria-hidden="true" tabindex="-1"></a>    x_values <span class="op">=</span> [initial_x]</span>
+<span id="annotated-cell-6-3"><a href="#annotated-cell-6-3" aria-hidden="true" tabindex="-1"></a>    y_values <span class="op">=</span> [f(initial_x)]</span>
+<span id="annotated-cell-6-4"><a href="#annotated-cell-6-4" aria-hidden="true" tabindex="-1"></a>    t_values <span class="op">=</span> [<span class="dv">1</span>]</span>
+<span id="annotated-cell-6-5"><a href="#annotated-cell-6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-6"><a href="#annotated-cell-6-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(iterations):</span>
+<span id="annotated-cell-6-7"><a href="#annotated-cell-6-7" aria-hidden="true" tabindex="-1"></a>        current_x, current_y <span class="op">=</span> x_values[<span class="op">-</span><span class="dv">1</span>], y_values[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="annotated-cell-6-8"><a href="#annotated-cell-6-8" aria-hidden="true" tabindex="-1"></a>        new_x <span class="op">=</span> current_x <span class="op">+</span> random.uniform(<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="annotated-cell-6-9"><a href="#annotated-cell-6-9" aria-hidden="true" tabindex="-1"></a>        new_y <span class="op">=</span> f(new_x)</span>
+<span id="annotated-cell-6-10"><a href="#annotated-cell-6-10" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="annotated-cell-6-11"><a href="#annotated-cell-6-11" aria-hidden="true" tabindex="-1"></a>        delta_e <span class="op">=</span> new_y <span class="op">-</span> current_y</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-6-12" class="code-annotation-target"><a href="#annotated-cell-6-12" aria-hidden="true" tabindex="-1"></a>        p <span class="op">=</span> exp(<span class="op">-</span>(delta_e)<span class="op">/</span>t_values[<span class="op">-</span><span class="dv">1</span>])</span>
+<span id="annotated-cell-6-13"><a href="#annotated-cell-6-13" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="annotated-cell-6-14"><a href="#annotated-cell-6-14" aria-hidden="true" tabindex="-1"></a>        p_values.append(p)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-6-15" class="code-annotation-target"><a href="#annotated-cell-6-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> delta_e <span class="op">&lt;</span> <span class="dv">0</span> <span class="kw">or</span> random.random() <span class="op">&lt;</span> p:</span>
+<span id="annotated-cell-6-16"><a href="#annotated-cell-6-16" aria-hidden="true" tabindex="-1"></a>            x_values.append(new_x)</span>
+<span id="annotated-cell-6-17"><a href="#annotated-cell-6-17" aria-hidden="true" tabindex="-1"></a>            y_values.append(new_y)</span>
+<span id="annotated-cell-6-18"><a href="#annotated-cell-6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-19"><a href="#annotated-cell-6-19" aria-hidden="true" tabindex="-1"></a>        t_values.append(<span class="dv">1</span> <span class="op">-</span> k <span class="op">/</span> iterations)</span>
+<span id="annotated-cell-6-20"><a href="#annotated-cell-6-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-21"><a href="#annotated-cell-6-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x_values, y_values, t_values</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-annotation">
 <dl class="code-annotation-container-grid">
-<dt data-target-cell="annotated-cell-5" data-target-annotation="1">1</dt>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-cell="annotated-cell-5" data-code-annotation="1" data-code-lines="12">The Boltzmann factor, which is our acceptance probability for states that are worse than the current one</span>
+<span data-code-cell="annotated-cell-6" data-code-annotation="1" data-code-lines="12">The Boltzmann factor, which is our acceptance probability for states that are worse than the current one</span>
 </dd>
-<dt data-target-cell="annotated-cell-5" data-target-annotation="2">2</dt>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-cell="annotated-cell-5" data-code-annotation="2" data-code-lines="15">We still always accept better states without asking, in the other cases we do so based on the Boltzmann factor. Together, this is called the “Metropolis acceptance criterion”</span>
+<span data-code-cell="annotated-cell-6" data-code-annotation="2" data-code-lines="15">We still always accept better states without asking, in the other cases we do so based on the Boltzmann factor. Together, this is called the “Metropolis acceptance criterion”</span>
 </dd>
 </dl>
 </div>
 </div>
 <p>Running simulated annealing with our example problem yields the following result:</p>
-<div class="cell" data-execution_count="14">
+<div class="cell" data-execution_count="113">
 <div class="cell-output cell-output-display">
 <div id="fig-pdf-annealing" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
 <p><img src="index_files/figure-html/fig-pdf-annealing-output-1.png" class="img-fluid figure-img"></p>
-<figcaption class="figure-caption">Figure&nbsp;7: Probability density function for the ‘simulated annealing’ algorithm</figcaption>
+<figcaption class="figure-caption">Figure&nbsp;8: Probability density function for the ‘simulated annealing’ algorithm</figcaption>
 </figure>
 </div>
 </div>
