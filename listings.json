@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/rnn-2/index.html",
       "/posts/simulated-annealing/index.html",
       "/posts/uninformed-search/index.html",
       "/posts/rnn-1/index.html"

@@ -2,22 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://maximilian-weichart.de/index.html</loc>
-    <lastmod>2023-11-25T09:46:37.729Z</lastmod>
+    <lastmod>2024-01-31T13:46:37.952Z</lastmod>
   </url>
   <url>
-    <loc>https://maximilian-weichart.de/posts/simulated-annealing/index.html</loc>
-    <lastmod>2023-11-25T09:46:37.150Z</lastmod>
-  </url>
-  <url>
-    <loc>https://maximilian-weichart.de/posts/rnn-1/index.html</loc>
-    <lastmod>2023-11-25T09:46:36.284Z</lastmod>
+    <loc>https://maximilian-weichart.de/posts/rnn-2/index.html</loc>
+    <lastmod>2024-01-31T13:46:37.355Z</lastmod>
   </url>
   <url>
     <loc>https://maximilian-weichart.de/posts/uninformed-search/index.html</loc>
-    <lastmod>2023-11-25T09:46:36.635Z</lastmod>
+    <lastmod>2024-01-31T13:46:36.468Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maximilian-weichart.de/posts/rnn-1/index.html</loc>
+    <lastmod>2024-01-31T13:46:36.096Z</lastmod>
+  </url>
+  <url>
+    <loc>https://maximilian-weichart.de/posts/simulated-annealing/index.html</loc>
+    <lastmod>2024-01-31T13:46:36.951Z</lastmod>
   </url>
   <url>
     <loc>https://maximilian-weichart.de/about.html</loc>
-    <lastmod>2023-11-25T09:46:37.484Z</lastmod>
+    <lastmod>2024-01-31T13:46:37.699Z</lastmod>
   </url>
 </urlset>

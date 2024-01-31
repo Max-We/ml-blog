@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Maximilian Weichart">
+<meta name="dcterms.date" content="2024-01-31">
+<meta name="description" content="How to work out the derivatives and implement the training loop in pure Python.">
+
+<title>MW - Backpropagation in RNNs</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../images/favicon.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="MW - Backpropagation in RNNs">
+<meta property="og:description" content="How to work out the derivatives and implement the training loop in pure Python.">
+<meta property="og:image" content="https://maximilian-weichart.de/posts/rnn-2/images/rnn-weights.png">
+<meta property="og:site-name" content="MW">
+<meta property="og:image:height" content="784">
+<meta property="og:image:width" content="800">
+<meta name="twitter:title" content="MW - Backpropagation in RNNs">
+<meta name="twitter:description" content="How to work out the derivatives and implement the training loop in pure Python.">
+<meta name="twitter:image" content="https://maximilian-weichart.de/posts/rnn-2/images/rnn-weights.png">
+<meta name="twitter:image-height" content="784">
+<meta name="twitter:image-width" content="800">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../images/favicon.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">MW</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html" rel="" target="">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Max-We" rel="" target=""><i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+</ul>
+            <div class="quarto-navbar-tools">
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Backpropagation in RNNs</h1>
+                  <div>
+        <div class="description">
+          How to work out the derivatives and implement the training loop in pure Python.
+        </div>
+      </div>
+                </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Maximilian Weichart </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">January 31, 2024</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#forward" id="toc-forward" class="nav-link active" data-scroll-target="#forward"><span class="header-section-number">1</span> Forward</a>
+  <ul class="collapse">
+  <li><a href="#loss" id="toc-loss" class="nav-link" data-scroll-target="#loss"><span class="header-section-number">1.1</span> Loss</a></li>
+  <li><a href="#output-state" id="toc-output-state" class="nav-link" data-scroll-target="#output-state"><span class="header-section-number">1.2</span> Output state</a></li>
+  <li><a href="#hidden-state" id="toc-hidden-state" class="nav-link" data-scroll-target="#hidden-state"><span class="header-section-number">1.3</span> Hidden state</a></li>
+  </ul></li>
+  <li><a href="#sec-backward" id="toc-sec-backward" class="nav-link" data-scroll-target="#sec-backward"><span class="header-section-number">2</span> Backward</a>
+  <ul class="collapse">
+  <li><a href="#loss-1" id="toc-loss-1" class="nav-link" data-scroll-target="#loss-1"><span class="header-section-number">2.1</span> Loss</a></li>
+  <li><a href="#output-state-1" id="toc-output-state-1" class="nav-link" data-scroll-target="#output-state-1"><span class="header-section-number">2.2</span> Output state</a></li>
+  <li><a href="#hidden-state-1" id="toc-hidden-state-1" class="nav-link" data-scroll-target="#hidden-state-1"><span class="header-section-number">2.3</span> Hidden state</a></li>
+  <li><a href="#relu" id="toc-relu" class="nav-link" data-scroll-target="#relu"><span class="header-section-number">2.4</span> ReLU</a></li>
+  <li><a href="#timesteps" id="toc-timesteps" class="nav-link" data-scroll-target="#timesteps"><span class="header-section-number">2.5</span> Timesteps</a></li>
+  <li><a href="#all-together" id="toc-all-together" class="nav-link" data-scroll-target="#all-together"><span class="header-section-number">2.6</span> All together</a></li>
+  </ul></li>
+  <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation"><span class="header-section-number">3</span> Implementation</a>
+  <ul class="collapse">
+  <li><a href="#training" id="toc-training" class="nav-link" data-scroll-target="#training"><span class="header-section-number">3.1</span> Training</a></li>
+  <li><a href="#validation" id="toc-validation" class="nav-link" data-scroll-target="#validation"><span class="header-section-number">3.2</span> Validation</a></li>
+  </ul></li>
+  <li><a href="#zigzag-problem" id="toc-zigzag-problem" class="nav-link" data-scroll-target="#zigzag-problem"><span class="header-section-number">4</span> Zigzag problem</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block page-columns page-full" id="quarto-document-content">
+
+
+
+
+<div class="cell" data-execution_count="4">
+<details>
+<summary>Visualization functions</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_zic_zac(X, Y, title, dotted<span class="op">=</span><span class="va">True</span>):</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  figsize <span class="op">=</span> <span class="bu">len</span>(X[<span class="dv">0</span>]) <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  fig, axis <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="bu">len</span>(X), figsize<span class="op">=</span>(figsize <span class="op">*</span> <span class="bu">len</span>(X), figsize))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="kw">not</span> <span class="bu">isinstance</span>(axis, np.ndarray):</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    axis <span class="op">=</span> np.array([axis])</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Set aspect ratio and y-axis limits for all subplots</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> ax <span class="kw">in</span> axis:</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      ax.set_aspect(<span class="st">'auto'</span>, adjustable<span class="op">=</span><span class="st">'box'</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      ax.set_ylim(<span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      ax.set_xlim(<span class="dv">0</span>, figsize)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  space <span class="op">=</span> np.linspace(<span class="dv">0</span>, figsize, figsize)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Input values</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    axis[i].plot(space, x <span class="op">+</span> [np.nan], label<span class="op">=</span><span class="st">"x"</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Values to be predicted by the RNN</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  continuation_point <span class="op">=</span> figsize <span class="op">/</span> (figsize <span class="op">-</span> <span class="dv">1</span>) <span class="op">*</span> (figsize <span class="op">-</span> <span class="dv">2</span>)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> i, y <span class="kw">in</span> <span class="bu">enumerate</span>(Y):</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    axis[i].plot([continuation_point, figsize], [X[i][<span class="op">-</span><span class="dv">1</span>],y], linestyle<span class="op">=</span><span class="st">'dotted'</span> <span class="cf">if</span> dotted <span class="cf">else</span> <span class="st">'solid'</span>, label<span class="op">=</span><span class="st">"y"</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  plt.suptitle(title)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  plt.legend()</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  plt.show()</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_simple(X, Y, title, dotted<span class="op">=</span><span class="va">True</span>):</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    num_plots <span class="op">=</span> <span class="bu">len</span>(X)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    max_len <span class="op">=</span> <span class="bu">max</span>([<span class="bu">len</span>(x) <span class="cf">for</span> x <span class="kw">in</span> X]) <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    fig, axis <span class="op">=</span> plt.subplots(<span class="dv">1</span>, num_plots, figsize<span class="op">=</span>(max_len <span class="op">*</span> num_plots, max_len))</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> <span class="bu">isinstance</span>(axis, np.ndarray):</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>        axis <span class="op">=</span> np.array([axis])</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Set aspect ratio and y-axis limits for all subplots</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> ax <span class="kw">in</span> axis:</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>        ax.set_aspect(<span class="st">'auto'</span>, adjustable<span class="op">=</span><span class="st">'box'</span>)</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>        ax.set_ylim(<span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>        ax.set_xlim(<span class="dv">0</span>, max_len)</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Input values</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>        space <span class="op">=</span> np.linspace(<span class="dv">0</span>, max_len, <span class="bu">len</span>(x) <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>        axis[i].plot(space, x <span class="op">+</span> [np.nan], label<span class="op">=</span><span class="st">"x"</span>)</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Values to be predicted by the RNN</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, y <span class="kw">in</span> <span class="bu">enumerate</span>(Y):</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>        <span class="co"># rescale x-axis values</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>        continuation_point <span class="op">=</span> (<span class="bu">len</span>(X[i])<span class="op">-</span><span class="dv">1</span>) <span class="op">/</span> <span class="bu">len</span>(X[i]) <span class="op">*</span> max_len</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>        axis[i].plot([continuation_point, max_len], [X[i][<span class="op">-</span><span class="dv">1</span>], y], linestyle<span class="op">=</span><span class="st">'dotted'</span> <span class="cf">if</span> dotted <span class="cf">else</span> <span class="st">'solid'</span>, label<span class="op">=</span><span class="st">"y"</span>)</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>    plt.suptitle(title)</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>In <a href="../rnn-1">Part 1</a> of this series, we implemented an RNN that can predict simple patterns. However, we used parameters from a pretrained model and didn’t learn how to train it on our own. Also, our RNN failed to generalize onto more complex patterns like the following zigzag shape.</p>
+<div class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> lin(x, w, b<span class="op">=</span><span class="dv">0</span>):</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x<span class="op">*</span>w<span class="op">+</span>b</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MiniRnn():</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  w1 <span class="op">=</span> <span class="fl">1.8</span> <span class="co"># weight linear layer</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  w2 <span class="op">=</span> <span class="op">-</span><span class="fl">0.5</span> <span class="co"># weight feedback loop</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  w3 <span class="op">=</span> <span class="fl">1.1</span> <span class="co"># weight output layer</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  b <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> forward(<span class="va">self</span>, X, i<span class="op">=</span><span class="dv">0</span>, f<span class="op">=</span><span class="dv">0</span>):</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Linear layer + non-linearity</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    l1 <span class="op">=</span> lin(X[i], <span class="va">self</span>.w1, <span class="va">self</span>.b <span class="op">+</span> f)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    relu <span class="op">=</span> <span class="bu">abs</span>(l1)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Feedback loop</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(i<span class="op">+</span><span class="dv">1</span> <span class="op">!=</span> <span class="bu">len</span>(X)):</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>      f <span class="op">=</span> relu <span class="op">*</span> <span class="va">self</span>.w2</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="va">self</span>.forward(X, i<span class="op">+</span><span class="dv">1</span>, f)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Final output</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    l2 <span class="op">=</span> lin(relu, <span class="va">self</span>.w3, <span class="va">self</span>.b)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">round</span>(l2, <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>rnn <span class="op">=</span> MiniRnn()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-outputid="21cf24f3-f0d6-4e47-83fc-26850e2a9983" data-execution_count="7">
+<div class="cell-output cell-output-display">
+<p><img src="index_files/figure-html/cell-6-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="cell" data-outputid="8bc98680-67fb-4bdb-dea3-0f3854916a23" data-execution_count="8">
+<div class="cell-output cell-output-display">
+<p><img src="index_files/figure-html/cell-7-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+<p>To make our model perform well on the zigzag dataset, we want to train it using backpropagation. But how does backpropagation work for RNNs? Will it solve our problem with the zigzag shaped data? The goal of this article is to give a concise answer to this question and to provide you with a small model that you can play around by yourself.</p>
+<p>In this article we will discuss how to compute the gradients mathematically and afterward, we’ll implement these concepts in our model code - without the help of PyTorch.</p>
+<section id="forward" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="forward"><span class="header-section-number">1</span> Forward</h2>
+<p>First, we have to think about what the model is doing in a mathematical way, so we’ll translate the forward pass into equations. Let’s remember how the model was being displayed in the previous part of this series.</p>
+<div id="fig-rnn-unrolled" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rnn-unrolled.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;1: Unrolled schema of an RNN that handles four inputs</figcaption>
+</figure>
+</div>
+<p>The most important thing to note is, that we actually have multiple outputs (<span class="math inline">\(y_0\)</span> to <span class="math inline">\(y_2\)</span> and <code>output value (y)</code> in this image). Of course, we are only interested in the last one because this is our prediction, but to define a formula for the RNN we can’t forget about the previous ones. The simplest way to do this is to introduce a suffix for the which output we want to reference, called a “timestep”.</p>
+<p>If you’re familiar with programming, you can imagine it like this: The outputs of our RNN are all collected in an array, say <code>y</code>. For example: <code>y = [1, 2, 3, 4]</code>. To get a specific output, you’d index into the array like so: <code>y[0]</code>. In this case, we’d take the model output <span class="math inline">\(y\)</span> at timestep <span class="math inline">\(0\)</span>, which we can write as <span class="math inline">\(y_0\)</span> or <span class="math inline">\(y_t\)</span> more generally, <span class="math inline">\(t\)</span> being shorthand for “timestep”.</p>
+<p>Now, let’s write down some formulas to define our model.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Tip
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>If you want to get as much value out of this article as possible, I recommend that you try to do it by yourself as a practise before continuing reading the solutions.</p>
+</div>
+</div>
+<section id="loss" class="level3" data-number="1.1">
+<h3 data-number="1.1" class="anchored" data-anchor-id="loss"><span class="header-section-number">1.1</span> Loss</h3>
+<p>The loss function, in our case MSE, can be used for a number of variables, but in our case we only have two, the prediction <span class="math inline">\(\hat{y}_t\)</span> and the label <span class="math inline">\(y_t\)</span>, so we define it as the following</p>
+<p><span id="eq-mse"><span class="math display">\[
+L = MSE(y_t, \hat{y}_t) =  \frac{1}{2} \cdot (y_t - \hat{y}_t)^2
+\tag{1}\]</span></span></p>
+</section>
+<section id="output-state" class="level3" data-number="1.2">
+<h3 data-number="1.2" class="anchored" data-anchor-id="output-state"><span class="header-section-number">1.2</span> Output state</h3>
+<p>We know that <span class="math inline">\(y_t\)</span> is the label in our training data, but now we have to specify how <span class="math inline">\(\hat{y}_t\)</span> is being calculated from the input data <span class="math inline">\(x\)</span> and the weights <span class="math inline">\(w_{1-3}\)</span>. <a href="#fig-rnn-weights">Figure&nbsp;3</a> displays a schematic overview of the weights and states inside our RNN.</p>
+<div id="fig-rnn-weights" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rnn-weights.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;2: Schema of an RNN with labels for the weights</figcaption>
+</figure>
+</div>
+<p>Let’s translate this process back-to front into formulas. The last step of calculating <span class="math inline">\(\hat{y}\)</span> is pretty simple, it’s just multiplying the hidden state with <span class="math inline">\(w_3\)</span>.</p>
+<p><span id="eq-y-hat"><span class="math display">\[
+\hat{y}_t = h_t \cdot w_3
+\tag{2}\]</span></span></p>
+</section>
+<section id="hidden-state" class="level3" data-number="1.3">
+<h3 data-number="1.3" class="anchored" data-anchor-id="hidden-state"><span class="header-section-number">1.3</span> Hidden state</h3>
+<p>Our definition of <span class="math inline">\(\hat{y}_t\)</span> includes <span class="math inline">\(h_t\)</span>, which we’ll try to define now. This is a little bit more complicated, but in essence we’re just doing the following steps:</p>
+<ol type="1">
+<li>Multiply the input <span class="math inline">\(x_t\)</span> with <span class="math inline">\(w_1\)</span></li>
+<li>Add the result to the previous hidden state <span class="math inline">\(h_{t-1}\)</span></li>
+<li>Apply the activation function, in our case <span class="math inline">\(\text{ReLU}\)</span></li>
+</ol>
+<p><span id="eq-h"><span class="math display">\[
+h_t = ReLU(w_1 \cdot x_t + h_{t-1} \cdot w_2)
+\tag{3}\]</span></span></p>
+</section>
+</section>
+<section id="sec-backward" class="level2 page-columns page-full" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="sec-backward"><span class="header-section-number">2</span> Backward</h2>
+<p>Given <a href="#eq-mse">Equation&nbsp;1</a>, <a href="#eq-y-hat">Equation&nbsp;2</a> and <a href="#eq-h">Equation&nbsp;3</a>, we now want to find out how to calculate the derivatives for $w_{1-3} $step by step so we can implement the process in our model. I’ll try to provide footnotes to the relevant derivative rules where appropriate for readers who are new to the subject.</p>
+<p>The gradients we’re interested in are those for the variables <span class="math inline">\(w_{1-3}\)</span>. Therefore, what we’re looking for is the following:</p>
+<p><span class="math display">\[
+\frac{\partial L}{\partial w_3};
+\frac{\partial L}{\partial w_2};
+\frac{\partial L}{\partial w_1}
+\]</span></p>
+<section id="loss-1" class="level3 page-columns page-full" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="loss-1"><span class="header-section-number">2.1</span> Loss</h3>
+<div class="page-columns page-full"><p>To calculate these derivatives, we first need to derive the loss, in our case the MSE in respect to <span class="math inline">\(\hat{y}_t\)</span>, because <span class="math inline">\(\hat{y}_t\)</span> is the model prediction and “leads to” all the weights. The derivative<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> is pretty straight forward, as the exponent and the fraction cancel out nicely.</p><div class="no-row-height column-margin column-container"><li id="fn1"><p><sup>1</sup>&nbsp;Power rule</p></li></div></div>
+<p><span class="math display">\[
+\frac{{\partial \text{{L}}}}{{\partial \hat{y}_t}}(y_t, \hat{y}_t) = 2 \cdot \frac{1}{2} \left( y_t - \hat{y}_t \right) = y_t - \hat{y}_t \tag{4}
+\]</span></p>
+<p>Implementing this in Python gives us the following code.</p>
+<div class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mse(x, y):</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> ((x <span class="op">-</span> y)<span class="op">/</span><span class="dv">2</span>)<span class="op">**</span><span class="dv">2</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> d_mse(x, y):</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x <span class="op">-</span> y</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="output-state-1" class="level3 page-columns page-full" data-number="2.2">
+<h3 data-number="2.2" class="anchored" data-anchor-id="output-state-1"><span class="header-section-number">2.2</span> Output state</h3>
+<div class="page-columns page-full"><p>This alone doesn’t suffice, as we have to continue deriving until we find <span class="math inline">\(w_{1-3}\)</span>. The third weight can be derived<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> quickly, following from <a href="#eq-y-hat">Equation&nbsp;2</a>.</p><div class="no-row-height column-margin column-container"><li id="fn2"><p><sup>2</sup>&nbsp;Product rule</p></li></div></div>
+<p><span class="math display">\[
+\frac{\partial \hat{y}_t}{\partial w_3} = h_t
+\]</span></p>
+</section>
+<section id="hidden-state-1" class="level3" data-number="2.3">
+<h3 data-number="2.3" class="anchored" data-anchor-id="hidden-state-1"><span class="header-section-number">2.3</span> Hidden state</h3>
+<p>The last step is deriving <span class="math inline">\(w_{1-2}\)</span>, which are included in <a href="#eq-h">Equation&nbsp;3</a>. Applying the chain-rule, we get the following results (<span class="math inline">\(ReLU'\)</span> means the derivative of the ReLU function).</p>
+<p><span class="math display">\[
+\frac{\partial h_t}{\partial w_1} = \text{ReLU}'(h_t) \cdot x_t
+\]</span></p>
+<p><span class="math display">\[
+\frac{\partial h_t}{\partial w_2} = \text{ReLU}'(h_t) \cdot h_{t-1}
+\]</span></p>
+</section>
+<section id="relu" class="level3 page-columns page-full" data-number="2.4">
+<h3 data-number="2.4" class="anchored" data-anchor-id="relu"><span class="header-section-number">2.4</span> ReLU</h3>
+<p><span class="math display">\[
+\text{{ReLU}}(x) = \begin{cases} x, &amp; \text{if } x &gt; 0 \\ 0, &amp; \text{otherwise} \end{cases}
+\]</span></p>
+<div class="page-columns page-full"><p>Considering both cases, we trivially calculate the derivatives<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> for each of them.</p><div class="no-row-height column-margin column-container"><li id="fn3"><p><sup>3</sup>&nbsp;Line rule, Constant rule</p></li></div></div>
+<p><span class="math display">\[
+\text{ReLU}'(x) = \begin{cases} 1, &amp; \text{if } x &gt; 0 \\ 0, &amp; \text{otherwise} \end{cases}
+\]</span></p>
+<div class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> relu(x):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="bu">max</span>(x,<span class="dv">0</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> d_relu(x):</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> x <span class="op">&gt;</span> <span class="dv">0</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="timesteps" class="level3 page-columns page-full" data-number="2.5">
+<h3 data-number="2.5" class="anchored" data-anchor-id="timesteps"><span class="header-section-number">2.5</span> Timesteps</h3>
+<p>At this point, we know how to calculate the gradients when we’re at a specific timestep <span class="math inline">\(h_t\)</span>. However, we’d like to calculate the gradients in respect to the loss, so based on the chain rule we want to find out: <span class="math display">\[
+\frac{\partial L}{\partial \hat{y}} \frac{\partial \hat{y}}{\partial w_3}
+\]</span> <span class="math display">\[
+\frac{\partial L}{\partial \hat{y}} \frac{\partial \hat{y}}{\partial h_t} \frac{\partial h_t}{\partial w_2};
+\]</span> <span class="math display">\[
+\frac{\partial L}{\partial \hat{y}} \frac{\partial \hat{y}}{\partial h_t} \frac{\partial h_t}{\partial w_1};
+\]</span></p>
+<p>We have already calculated all the derivatives, except <span class="math inline">\(\frac{\partial \hat{y}}{\partial h_t}\)</span>. What does this term mean exactly? Let’s have a look at the unrolled network once again.</p>
+<div id="fig-rnn-weights" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rnn-weights.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;3: Schema of an RNN with labels for the weights</figcaption>
+</figure>
+</div>
+<div class="page-columns page-full"><p>Considering <a href="#eq-y-hat">Equation&nbsp;2</a>, the deriving<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> in the case of the last hidden state <span class="math inline">\(h_n\)</span> is straightforward.</p><div class="no-row-height column-margin column-container"><li id="fn4"><p><sup>4</sup>&nbsp;Product rule</p></li></div></div>
+<p><span class="math display">\[
+\frac{\partial \hat{y}}{\partial h_{n}} = w_2
+\]</span></p>
+<p>However, for all previous hidden states <span class="math inline">\(h_t\)</span> the gradient depends on the following state <span class="math inline">\(h_{t+1}\)</span>. This is because the gradient “flows” from the loss to the weights. For example, to calculate the gradient for <span class="math inline">\(h_2\)</span> (<a href="#fig-rnn-weights">Figure&nbsp;3</a>), you need to first calculate the gradient for <span class="math inline">\(h_3\)</span> because this is the only “path” that leads to the loss, which is the source of the gradient. So when calculating the gradients, we have to do it step by step, always depending on the later layers <span class="math inline">\(h_{t+1}\)</span>. This is also referred to “backpropagation through time”.</p>
+<p><span class="math display">\[
+h_{t+1} = ReLU(h_t \cdot w_2 + x_3 \cdot w_1)
+\]</span></p>
+<p><span class="math display">\[
+\frac{\partial h_{t+1}}{h_{t}} = ReLU'(h_t) \cdot w_2
+\]</span></p>
+<p>And putting it all together, we recursively define the derivative in respect to <span class="math inline">\(h_{t+1}\)</span>. This calculation will be done until we arrive at <span class="math inline">\(h_n\)</span>, where we can stop.</p>
+<p><span class="math display">\[
+\frac{\partial \hat{y}}{\partial h_t} = \frac{\partial \hat{y}}{\partial h_{t+1}} \frac{\partial h_{t+1}}{\partial h_{t}}  = \frac{\partial \hat{y}}{\partial h_{t+1}} \cdot ReLU'(h_t) \cdot w_2
+\]</span></p>
+</section>
+<section id="all-together" class="level3" data-number="2.6">
+<h3 data-number="2.6" class="anchored" data-anchor-id="all-together"><span class="header-section-number">2.6</span> All together</h3>
+<p>So now we know how to “find a path” from <span class="math inline">\(L\)</span> to any of <span class="math inline">\(w_{1-3}\)</span>. However, to calculate the derivative in respect to <span class="math inline">\(w_{1-2}\)</span>, we need to consider all the “paths” at once:</p>
+<div id="fig-rnn-comp" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rnn-comp.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;4: Schema of the RNN depicting the need for multivariable function derivative</figcaption>
+</figure>
+</div>
+<p>This is because the weights <span class="math inline">\(w_{1,2}\)</span> are used during all timesteps for the calculation for <span class="math inline">\(\hat{y}\)</span>. When calculating the derivatives in respect to the weights, we can’t just pick one path and calculate it for this path only, we have to consider all of them at the same time because all of the “paths” influence <span class="math inline">\(L\)</span>. Using the derivative rule for variables in a multivariable function, we finally arrive at the following equations.</p>
+<p><span class="math display">\[
+\frac{\partial L}{\partial w_2} = \frac{\partial L}{\partial \hat{y}} \sum_t{\frac{\partial \hat{y}}{\partial h_t} \frac{\partial h_t}{\partial w_2}} ;
+\]</span></p>
+<p><span class="math display">\[
+\frac{\partial L}{\partial w_1} = \frac{\partial L}{\partial \hat{y}} \sum_t{\frac{\partial \hat{y}}{\partial h_t} \frac{\partial h_t}{\partial w_1}} ;
+\]</span></p>
+</section>
+</section>
+<section id="implementation" class="level2 page-columns page-full" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="implementation"><span class="header-section-number">3</span> Implementation</h2>
+<p>To implement all of this in Python, we’ll first refactor our <code>MiniRNN</code>, introducing the data structures for <span class="math inline">\(h_t\)</span> and <span class="math inline">\(x_t\)</span> which are necessary for calculating the partial derivatives.</p>
+<div class="cell" data-execution_count="71">
+<details>
+<summary>Refactoring MiniRnn</summary>
+<div class="sourceCode cell-code" id="annotated-cell-6"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-6-1"><a href="#annotated-cell-6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MiniRnn():</span>
+<span id="annotated-cell-6-2"><a href="#annotated-cell-6-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Initialize weights</span></span>
+<span id="annotated-cell-6-3"><a href="#annotated-cell-6-3" aria-hidden="true" tabindex="-1"></a>  w1 <span class="op">=</span> torch.rand(<span class="dv">1</span>) <span class="co"># linear layer (W_xh)</span></span>
+<span id="annotated-cell-6-4"><a href="#annotated-cell-6-4" aria-hidden="true" tabindex="-1"></a>  w2 <span class="op">=</span> torch.rand(<span class="dv">1</span>) <span class="co"># feedback loop (W_hh)</span></span>
+<span id="annotated-cell-6-5"><a href="#annotated-cell-6-5" aria-hidden="true" tabindex="-1"></a>  w3 <span class="op">=</span> torch.rand(<span class="dv">1</span>) <span class="co"># output layer (W_hy)</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-6-6" class="code-annotation-target"><a href="#annotated-cell-6-6" aria-hidden="true" tabindex="-1"></a>  w1.g, w2.g, w3.g <span class="op">=</span> <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span></span>
+<span id="annotated-cell-6-7"><a href="#annotated-cell-6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-8"><a href="#annotated-cell-6-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Initialize value structures (used for derivatives)</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-6-9" class="code-annotation-target"><a href="#annotated-cell-6-9" aria-hidden="true" tabindex="-1"></a>  X <span class="op">=</span> <span class="va">None</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-6-10" class="code-annotation-target"><a href="#annotated-cell-6-10" aria-hidden="true" tabindex="-1"></a>  h <span class="op">=</span> {<span class="dv">0</span>: torch.tensor([<span class="fl">0.0</span>])}</span>
+<span id="annotated-cell-6-11"><a href="#annotated-cell-6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-12"><a href="#annotated-cell-6-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> forward(<span class="va">self</span>, X):</span>
+<span id="annotated-cell-6-13"><a href="#annotated-cell-6-13" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.X <span class="op">=</span> X</span>
+<span id="annotated-cell-6-14"><a href="#annotated-cell-6-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-15"><a href="#annotated-cell-6-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Run through the RNN</span></span>
+<span id="annotated-cell-6-16"><a href="#annotated-cell-6-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="annotated-cell-6-17"><a href="#annotated-cell-6-17" aria-hidden="true" tabindex="-1"></a>      <span class="va">self</span>.h[i <span class="op">+</span> <span class="dv">1</span>] <span class="op">=</span> relu(<span class="va">self</span>.w1 <span class="op">*</span> x <span class="op">+</span> <span class="va">self</span>.w2 <span class="op">*</span> <span class="va">self</span>.h[i])</span>
+<span id="annotated-cell-6-18"><a href="#annotated-cell-6-18" aria-hidden="true" tabindex="-1"></a>      y <span class="op">=</span> <span class="va">self</span>.w3 <span class="op">*</span> <span class="va">self</span>.h[i <span class="op">+</span> <span class="dv">1</span>]</span>
+<span id="annotated-cell-6-19"><a href="#annotated-cell-6-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-20"><a href="#annotated-cell-6-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> y</span>
+<span id="annotated-cell-6-21"><a href="#annotated-cell-6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-22"><a href="#annotated-cell-6-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Utility functions for resetting the class</span></span>
+<span id="annotated-cell-6-23"><a href="#annotated-cell-6-23" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> clear_states(<span class="va">self</span>):</span>
+<span id="annotated-cell-6-24"><a href="#annotated-cell-6-24" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.h <span class="op">=</span> {<span class="dv">0</span>:torch.tensor([<span class="fl">0.0</span>])}</span>
+<span id="annotated-cell-6-25"><a href="#annotated-cell-6-25" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.X <span class="op">=</span> <span class="va">None</span></span>
+<span id="annotated-cell-6-26"><a href="#annotated-cell-6-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-27"><a href="#annotated-cell-6-27" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> zero_grads(<span class="va">self</span>):</span>
+<span id="annotated-cell-6-28"><a href="#annotated-cell-6-28" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.w1.g, <span class="va">self</span>.w2.g, <span class="va">self</span>.w3.g <span class="op">=</span> <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span></span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-6" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-annotation="1" data-code-cell="annotated-cell-6" data-code-lines="6">Initialize the gradients to <code>0</code></span>
+</dd>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-annotation="2" data-code-cell="annotated-cell-6" data-code-lines="9">Data structure for saving the inputs <span class="math inline">\(x_{t}\)</span></span>
+</dd>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-annotation="3" data-code-cell="annotated-cell-6" data-code-lines="10">Data structure for saving the hidden states <span class="math inline">\(h_{t}\)</span></span>
+</dd>
+</dl>
+</div>
+</div>
+<div class="page-columns page-full"><p>Finally, we’ll implement the equations for the partial derivatives from <a href="#sec-backward">Section&nbsp;2</a> in our model to calculate the gradients in the backwards function<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p><div class="no-row-height column-margin column-container"><li id="fn5"><p><sup>5</sup>&nbsp;Partly based on https://victorzhou.com/blog/intro-to-rnns/#7-the-backward-phase</p></li></div></div>
+<div class="cell" data-execution_count="77">
+<div class="sourceCode cell-code" id="annotated-cell-7"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-7-1"><a href="#annotated-cell-7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MiniRnn():</span>
+<span id="annotated-cell-7-2"><a href="#annotated-cell-7-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Initialize weights</span></span>
+<span id="annotated-cell-7-3"><a href="#annotated-cell-7-3" aria-hidden="true" tabindex="-1"></a>  w1 <span class="op">=</span> torch.rand(<span class="dv">1</span>) <span class="co"># linear layer (W_xh)</span></span>
+<span id="annotated-cell-7-4"><a href="#annotated-cell-7-4" aria-hidden="true" tabindex="-1"></a>  w2 <span class="op">=</span> torch.rand(<span class="dv">1</span>) <span class="co"># feedback loop (W_hh)</span></span>
+<span id="annotated-cell-7-5"><a href="#annotated-cell-7-5" aria-hidden="true" tabindex="-1"></a>  w3 <span class="op">=</span> torch.rand(<span class="dv">1</span>) <span class="co"># output layer (W_hy)</span></span>
+<span id="annotated-cell-7-6"><a href="#annotated-cell-7-6" aria-hidden="true" tabindex="-1"></a>  w1.g, w2.g, w3.g <span class="op">=</span> <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span></span>
+<span id="annotated-cell-7-7"><a href="#annotated-cell-7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-8"><a href="#annotated-cell-7-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Initialize value structures (used for derivatives)</span></span>
+<span id="annotated-cell-7-9"><a href="#annotated-cell-7-9" aria-hidden="true" tabindex="-1"></a>  X <span class="op">=</span> <span class="va">None</span></span>
+<span id="annotated-cell-7-10"><a href="#annotated-cell-7-10" aria-hidden="true" tabindex="-1"></a>  h <span class="op">=</span> {<span class="dv">0</span>: torch.tensor([<span class="fl">0.0</span>])}</span>
+<span id="annotated-cell-7-11"><a href="#annotated-cell-7-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-12"><a href="#annotated-cell-7-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> forward(<span class="va">self</span>, X):</span>
+<span id="annotated-cell-7-13"><a href="#annotated-cell-7-13" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.X <span class="op">=</span> X</span>
+<span id="annotated-cell-7-14"><a href="#annotated-cell-7-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-15"><a href="#annotated-cell-7-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Run through the RNN</span></span>
+<span id="annotated-cell-7-16"><a href="#annotated-cell-7-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="annotated-cell-7-17"><a href="#annotated-cell-7-17" aria-hidden="true" tabindex="-1"></a>      <span class="va">self</span>.h[i <span class="op">+</span> <span class="dv">1</span>] <span class="op">=</span> relu(<span class="va">self</span>.w1 <span class="op">*</span> x <span class="op">+</span> <span class="va">self</span>.w2 <span class="op">*</span> <span class="va">self</span>.h[i])</span>
+<span id="annotated-cell-7-18"><a href="#annotated-cell-7-18" aria-hidden="true" tabindex="-1"></a>      y <span class="op">=</span> <span class="va">self</span>.w3 <span class="op">*</span> <span class="va">self</span>.h[i <span class="op">+</span> <span class="dv">1</span>]</span>
+<span id="annotated-cell-7-19"><a href="#annotated-cell-7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-20"><a href="#annotated-cell-7-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> y</span>
+<span id="annotated-cell-7-21"><a href="#annotated-cell-7-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-22"><a href="#annotated-cell-7-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> backward(<span class="va">self</span>, loss_g):</span>
+<span id="annotated-cell-7-23"><a href="#annotated-cell-7-23" aria-hidden="true" tabindex="-1"></a>    n <span class="op">=</span> <span class="bu">len</span>(<span class="va">self</span>.X)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-7" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-7-24" class="code-annotation-target"><a href="#annotated-cell-7-24" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.w3g <span class="op">=</span> <span class="va">self</span>.h[n] <span class="op">*</span> loss_g</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-7" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-7-25" class="code-annotation-target"><a href="#annotated-cell-7-25" aria-hidden="true" tabindex="-1"></a>    d_h <span class="op">=</span> <span class="va">self</span>.w3 <span class="op">*</span> loss_g</span>
+<span id="annotated-cell-7-26"><a href="#annotated-cell-7-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-27"><a href="#annotated-cell-7-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">reversed</span>(<span class="bu">range</span>(n)):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-7" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-7-28" class="code-annotation-target"><a href="#annotated-cell-7-28" aria-hidden="true" tabindex="-1"></a>        tmp <span class="op">=</span> d_h <span class="op">*</span> d_relu(<span class="va">self</span>.h[i<span class="op">+</span><span class="dv">1</span>])</span>
+<span id="annotated-cell-7-29"><a href="#annotated-cell-7-29" aria-hidden="true" tabindex="-1"></a></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-7" data-target-annotation="4" onclick="event.preventDefault();">4</a><span id="annotated-cell-7-30" class="code-annotation-target"><a href="#annotated-cell-7-30" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.w2.g <span class="op">+=</span> tmp <span class="op">*</span> <span class="va">self</span>.h[i]</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-7" data-target-annotation="5" onclick="event.preventDefault();">5</a><span id="annotated-cell-7-31" class="code-annotation-target"><a href="#annotated-cell-7-31" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.w1.g <span class="op">+=</span> tmp <span class="op">*</span> <span class="va">self</span>.X[i]</span>
+<span id="annotated-cell-7-32"><a href="#annotated-cell-7-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-33"><a href="#annotated-cell-7-33" aria-hidden="true" tabindex="-1"></a>        d_h <span class="op">=</span> tmp <span class="op">*</span> <span class="va">self</span>.w2</span>
+<span id="annotated-cell-7-34"><a href="#annotated-cell-7-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-35"><a href="#annotated-cell-7-35" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> clear_states(<span class="va">self</span>):</span>
+<span id="annotated-cell-7-36"><a href="#annotated-cell-7-36" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.h <span class="op">=</span> {<span class="dv">0</span>:torch.tensor([<span class="fl">0.0</span>])}</span>
+<span id="annotated-cell-7-37"><a href="#annotated-cell-7-37" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.X <span class="op">=</span> <span class="va">None</span></span>
+<span id="annotated-cell-7-38"><a href="#annotated-cell-7-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-7-39"><a href="#annotated-cell-7-39" aria-hidden="true" tabindex="-1"></a>  <span class="kw">def</span> zero_grads(<span class="va">self</span>):</span>
+<span id="annotated-cell-7-40"><a href="#annotated-cell-7-40" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>.w1.g, <span class="va">self</span>.w2.g, <span class="va">self</span>.w3.g <span class="op">=</span> <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span></span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-7" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-annotation="1" data-code-cell="annotated-cell-7" data-code-lines="24">Calculate <span class="math inline">\(\frac{\partial L}{\partial w_3}\)</span></span>
+</dd>
+<dt data-target-cell="annotated-cell-7" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-annotation="2" data-code-cell="annotated-cell-7" data-code-lines="25">Calculate <span class="math inline">\(\frac{\partial \hat{y}}{\partial h_{n}}\)</span></span>
+</dd>
+<dt data-target-cell="annotated-cell-7" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-annotation="3" data-code-cell="annotated-cell-7" data-code-lines="28">Introduce temporary variable for less redundant code</span>
+</dd>
+<dt data-target-cell="annotated-cell-7" data-target-annotation="4">4</dt>
+<dd>
+<span data-code-annotation="4" data-code-cell="annotated-cell-7" data-code-lines="30">Calculate <span class="math inline">\(\frac{\partial h_t}{\partial w_2}\)</span></span>
+</dd>
+<dt data-target-cell="annotated-cell-7" data-target-annotation="5">5</dt>
+<dd>
+<span data-code-annotation="5" data-code-cell="annotated-cell-7" data-code-lines="31,33">Calculate <span class="math inline">\(\frac{\partial h_t}{\partial w_1}\)</span></span>
+</dd>
+</dl>
+</div>
+</div>
+<section id="training" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="training"><span class="header-section-number">3.1</span> Training</h3>
+<p>To try out whether our implementation is correct, we can train this model on the previous examples of rising and falling data series.</p>
+<div class="cell" data-execution_count="84">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>rnn <span class="op">=</span> MiniRnn()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> [[<span class="dv">0</span>, <span class="fl">0.5</span>], [<span class="fl">0.5</span>,<span class="fl">0.5</span>],[<span class="dv">1</span>,<span class="fl">0.5</span>]]</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> [<span class="dv">1</span>,<span class="fl">0.5</span>,<span class="dv">0</span>]</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> train(model, epochs<span class="op">=</span><span class="dv">20000</span>, lr<span class="op">=</span><span class="fl">0.001</span>):</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> e <span class="kw">in</span> <span class="bu">range</span>(epochs):</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>      d_loss <span class="op">=</span> d_mse(model.forward(x), y[i])</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>      model.backward(d_loss)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>      model.w1 <span class="op">-=</span> model.w1.g <span class="op">*</span> lr</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>      model.w2 <span class="op">-=</span> model.w2.g <span class="op">*</span> lr</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>      model.w3 <span class="op">-=</span> model.w3.g <span class="op">*</span> lr</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>      model.zero_grads()</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>train(rnn)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="validation" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="validation"><span class="header-section-number">3.2</span> Validation</h3>
+<p>Let’s run our model on the examples from the previous article and see how it performs.</p>
+<div class="cell" data-execution_count="87">
+<div class="cell-output cell-output-display">
+<div id="fig-small-expected" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-small-expected-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;5: Input validation data arrays with the expected continuation</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-execution_count="88">
+<div class="cell-output cell-output-display">
+<div id="fig-small-predictions" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-small-predictions-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;6: Input validation data arrays with the model prediction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>We can also take a look at what the weights look like:</p>
+<div class="cell" data-execution_count="89">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>rnn.w1, rnn.w2, rnn.w3</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="89">
+<pre><code>(tensor([2.3161]), tensor([-0.4927]), tensor([0.8070]))</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="zigzag-problem" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="zigzag-problem"><span class="header-section-number">4</span> Zigzag problem</h2>
+<p>Now let’s train our model on the zigzag shapes and see what it predicts on the data.</p>
+<div class="cell" data-execution_count="82">
+<details>
+<summary>Training on zigzag data</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>rnn <span class="op">=</span> MiniRnn()</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> [data_zic_zac, data_zic_zac2]</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> [<span class="dv">1</span>,<span class="dv">0</span>]</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> train(model, epochs<span class="op">=</span><span class="dv">20000</span>, lr<span class="op">=</span><span class="fl">0.001</span>):</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> e <span class="kw">in</span> <span class="bu">range</span>(epochs):</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, x <span class="kw">in</span> <span class="bu">enumerate</span>(X):</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>      d_loss <span class="op">=</span> d_mse(model.forward(x), y[i])</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>      model.backward(d_loss)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>      model.w1 <span class="op">-=</span> model.w1.g <span class="op">*</span> lr</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>      model.w2 <span class="op">-=</span> model.w2.g <span class="op">*</span> lr</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>      model.w3 <span class="op">-=</span> model.w3.g <span class="op">*</span> lr</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>      model.zero_grads()</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>train(rnn)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="80">
+<div class="cell-output cell-output-display">
+<p><img src="index_files/figure-html/cell-20-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+<div class="cell" data-execution_count="81">
+<div class="cell-output cell-output-display">
+<div id="fig-zigzag-predictions" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-zigzag-predictions-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;7: Zigzag validation data arrays with the model prediction</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The predictions look better than the one with the previous weights, but they’re far from perfect, so we can’t really say that the model learned the shape.</p>
+<p>Of course, we could experiment with more shapes and all the hyperparameters, but at this point it’s probably best to switch to the successor of the RNN, the LSTM (Long-Term Short-Term Memory) architecture. These kinds of model are in a few ways similar to the RNN, but without some of its drawbacks. They should be able to capture more complicated shapes, and I’d like to introduce them in another article to you.</p>
+
+
+</section>
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
