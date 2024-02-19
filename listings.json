@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/dynamic-programming-1/index.html",
       "/posts/rnn-2/index.html",
       "/posts/simulated-annealing/index.html",
       "/posts/uninformed-search/index.html",
