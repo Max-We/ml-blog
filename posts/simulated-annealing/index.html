@@ -265,7 +265,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-2" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="5" data-code-cell="annotated-cell-2" data-code-annotation="1">At each timestep we just select a random <span class="math inline">\(x\)</span> for our function</span>
+<span data-code-annotation="1" data-code-cell="annotated-cell-2" data-code-lines="5">At each timestep we just select a random <span class="math inline">\(x\)</span> for our function</span>
 </dd>
 </dl>
 </div>
@@ -303,7 +303,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="9" data-code-cell="annotated-cell-3" data-code-annotation="1">Only accept “worse” solutions 50% of the time</span>
+<span data-code-annotation="1" data-code-cell="annotated-cell-3" data-code-lines="9">Only accept “worse” solutions 50% of the time</span>
 </dd>
 </dl>
 </div>
@@ -341,7 +341,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-4" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="7" data-code-cell="annotated-cell-4" data-code-annotation="1">Only consider neighboring values of the current states by reducing the interval that we sample from to <span class="math inline">\([-1, 1]\)</span>, which are the neighboring states only. If we were to sample from <span class="math inline">\([-20, 20]\)</span> like before, we’d lose our progress at every step.</span>
+<span data-code-annotation="1" data-code-cell="annotated-cell-4" data-code-lines="7">Only consider neighboring values of the current states by reducing the interval that we sample from to <span class="math inline">\([-1, 1]\)</span>, which are the neighboring states only. If we were to sample from <span class="math inline">\([-20, 20]\)</span> like before, we’d lose our progress at every step.</span>
 </dd>
 </dl>
 </div>
@@ -388,15 +388,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-5" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="4" data-code-cell="annotated-cell-5" data-code-annotation="1">We start with a temperature of 1 (100% acceptance probability)</span>
+<span data-code-annotation="1" data-code-cell="annotated-cell-5" data-code-lines="4">We start with a temperature of 1 (100% acceptance probability)</span>
 </dd>
 <dt data-target-cell="annotated-cell-5" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-lines="10" data-code-cell="annotated-cell-5" data-code-annotation="2">This change means the same as in our previous algorithms. Because we save the temperatures in an array (for visualization), we want to consider the latest entry.</span>
+<span data-code-annotation="2" data-code-cell="annotated-cell-5" data-code-lines="10">This change means the same as in our previous algorithms. Because we save the temperatures in an array (for visualization), we want to consider the latest entry.</span>
 </dd>
 <dt data-target-cell="annotated-cell-5" data-target-annotation="3">3</dt>
 <dd>
-<span data-code-lines="14" data-code-cell="annotated-cell-5" data-code-annotation="3">We decrease the temperature linearly</span>
+<span data-code-annotation="3" data-code-cell="annotated-cell-5" data-code-lines="14">We decrease the temperature linearly</span>
 </dd>
 </dl>
 </div>
@@ -531,11 +531,11 @@ e^{-\frac{\Delta E}{T}}
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-6" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="12" data-code-cell="annotated-cell-6" data-code-annotation="1">The Boltzmann factor, which is our acceptance probability for states that are worse than the current one</span>
+<span data-code-annotation="1" data-code-cell="annotated-cell-6" data-code-lines="12">The Boltzmann factor, which is our acceptance probability for states that are worse than the current one</span>
 </dd>
 <dt data-target-cell="annotated-cell-6" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-lines="15" data-code-cell="annotated-cell-6" data-code-annotation="2">We still always accept better states without asking, in the other cases we do so based on the Boltzmann factor. Together, this is called the “Metropolis acceptance criterion”</span>
+<span data-code-annotation="2" data-code-cell="annotated-cell-6" data-code-lines="15">We still always accept better states without asking, in the other cases we do so based on the Boltzmann factor. Together, this is called the “Metropolis acceptance criterion”</span>
 </dd>
 </dl>
 </div>

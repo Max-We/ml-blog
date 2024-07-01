@@ -227,6 +227,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </figure>
 </div>
 <p>Before reading this post, I recommend watching the video, as it covers rejection sampling and polar coordinate methods to solve this problem. In the following sections, I will present another solution that neither relies on rejection sampling nor polar coordinates, but instead utilizes the equation of a circle directly. Why would you want to know about all this? I’m not sure, but maybe this simple problem stimulates your curiosity like it did for me, so I recommend doing it for this purpose alone.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>As already mentioned, there exist many solutions to this problem, like the rejection-sampling method. This post is about the result of my own ideas of thinking about the problem, but of course, these are not new and can be found in the existing approaches.</p>
+</div>
+</div>
 </section>
 <section id="uniform-sampling" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Uniform Sampling</h1>
@@ -236,7 +249,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p><span id="eq-r"><span class="math display">\[
 y^2 + x^2 = r^2
 \tag{1}\]</span></span></p>
-<p>Using <a href="#eq-r">Equation&nbsp;1</a>, random points on the circumference of a circle can be sampled by selecting random values for <span class="math inline">\(x \in [0,r]\)</span> and calculating the corresponding <span class="math inline">\(y\)</span>) value (or vice versa). However, <a href="#eq-r">Equation&nbsp;1</a> yields all points on a circle of a specified radius, whereas our objective is to sample uniformly from the entire area within the circle. This can be achieved by additionally sampling the radius as <span class="math inline">\(r_{\text{sampled}} \in [0,r]\)</span>. To summarize, the following procedure can be followed <em>as out first attempt</em> to sample points uniformly within a circle of radius <span class="math inline">\(r = 1\)</span>:</p>
+<p>Using <a href="#eq-r">Equation&nbsp;1</a>, random points <em>on</em> a circle can be sampled by selecting random values for <span class="math inline">\(x \in [0,r]\)</span> and calculating the corresponding <span class="math inline">\(y\)</span> value (or vice versa). This only gives us points lying <em>on</em> the circle, whereas our objective is to sample uniformly from the entire area <em>within</em> the circle. This can be achieved by additionally sampling the radius as <span class="math inline">\(r_{\text{sampled}} \in [0,r]\)</span>. To summarize, the following procedure can be followed as our <strong>first attempt</strong> to sample points uniformly within a circle of radius <span class="math inline">\(r = 1\)</span>:</p>
 <ol type="1">
 <li>Sample <span class="math inline">\(r_{\text{sampled}} \in [0,1]\)</span></li>
 <li>Sample <span class="math inline">\(x \in [0, r_{\text{sampled}}]\)</span></li>
@@ -323,7 +336,7 @@ c = 2 \pi r_{\text{sampled}}
 </section>
 <section id="inverse" class="level2" data-number="3.3">
 <h2 data-number="3.3" class="anchored" data-anchor-id="inverse"><span class="header-section-number">3.3</span> Inverse</h2>
-<p>Now we notice the second problem: It seems like there are fewer points on the bottom of the circle. To explain what’s going on, it’s easier to look at a single circle generated with this approach.</p>
+<p>Now we notice the second problem: It seems like there are fewer points at the bottom of the diagram. To explain what’s going on, it’s easier to look at a single circle generated with this approach.</p>
 <div class="cell" data-execution_count="17">
 <details>
 <summary>Code</summary>
