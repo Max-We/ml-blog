@@ -195,16 +195,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a></li>
-  <li><a href="#introduction-1" id="toc-introduction-1" class="nav-link" data-scroll-target="#introduction-1"><span class="header-section-number">2</span> Introduction</a></li>
-  <li><a href="#uniform-sampling" id="toc-uniform-sampling" class="nav-link" data-scroll-target="#uniform-sampling"><span class="header-section-number">3</span> Uniform Sampling</a>
+  <li><a href="#uniform-sampling" id="toc-uniform-sampling" class="nav-link" data-scroll-target="#uniform-sampling"><span class="header-section-number">2</span> Uniform Sampling</a>
   <ul class="collapse">
-  <li><a href="#naive-approach" id="toc-naive-approach" class="nav-link" data-scroll-target="#naive-approach"><span class="header-section-number">3.1</span> Naive Approach</a></li>
-  <li><a href="#circumference-sampling" id="toc-circumference-sampling" class="nav-link" data-scroll-target="#circumference-sampling"><span class="header-section-number">3.2</span> Circumference sampling</a></li>
-  <li><a href="#inverse" id="toc-inverse" class="nav-link" data-scroll-target="#inverse"><span class="header-section-number">3.3</span> Inverse</a></li>
-  <li><a href="#full-circle" id="toc-full-circle" class="nav-link" data-scroll-target="#full-circle"><span class="header-section-number">3.4</span> Full circle</a></li>
-  <li><a href="#blurring-the-lines" id="toc-blurring-the-lines" class="nav-link" data-scroll-target="#blurring-the-lines"><span class="header-section-number">3.5</span> Blurring the lines</a></li>
+  <li><a href="#naive-approach" id="toc-naive-approach" class="nav-link" data-scroll-target="#naive-approach"><span class="header-section-number">2.1</span> Naive Approach</a></li>
+  <li><a href="#circumference-sampling" id="toc-circumference-sampling" class="nav-link" data-scroll-target="#circumference-sampling"><span class="header-section-number">2.2</span> Circumference sampling</a></li>
+  <li><a href="#inverse" id="toc-inverse" class="nav-link" data-scroll-target="#inverse"><span class="header-section-number">2.3</span> Inverse</a></li>
+  <li><a href="#full-circle" id="toc-full-circle" class="nav-link" data-scroll-target="#full-circle"><span class="header-section-number">2.4</span> Full circle</a></li>
+  <li><a href="#blurring-the-lines" id="toc-blurring-the-lines" class="nav-link" data-scroll-target="#blurring-the-lines"><span class="header-section-number">2.5</span> Blurring the lines</a></li>
   </ul></li>
-  <li><a href="#extra" id="toc-extra" class="nav-link" data-scroll-target="#extra"><span class="header-section-number">4</span> Extra</a></li>
+  <li><a href="#extra" id="toc-extra" class="nav-link" data-scroll-target="#extra"><span class="header-section-number">3</span> Extra</a></li>
   </ul>
 </nav>
     </div>
@@ -216,9 +215,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="introduction" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
-</section>
-<section id="introduction-1" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Introduction</h1>
 <p>YouTube recommendations can sometimes lead to surprisingly insightful videos. One such example is the video <a href="https://www.youtube.com/watch?v=4y_nmpv-9lI&amp;list=WL&amp;index=5">The BEST Way to Find a Random Point in a Circle</a> by <em>nubDotDev</em>, which was originally submitted to <a href="https://www.youtube.com/@3blue1brown">3blue1brown’s</a> <a href="https://www.3blue1brown.com/blog/some1">Summer of Math Exposition</a>. This video addresses an interesting problem: How would you write an algorithm to sample points uniformly within a circle?</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
@@ -241,10 +237,10 @@ Note
 </div>
 </div>
 </section>
-<section id="uniform-sampling" class="level1" data-number="3">
-<h1 data-number="3"><span class="header-section-number">3</span> Uniform Sampling</h1>
-<section id="naive-approach" class="level2" data-number="3.1">
-<h2 data-number="3.1" class="anchored" data-anchor-id="naive-approach"><span class="header-section-number">3.1</span> Naive Approach</h2>
+<section id="uniform-sampling" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Uniform Sampling</h1>
+<section id="naive-approach" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="naive-approach"><span class="header-section-number">2.1</span> Naive Approach</h2>
 <p>The equation for a circle of radius <span class="math inline">\(r\)</span> centered at the origin is given by:</p>
 <p><span id="eq-r"><span class="math display">\[
 y^2 + x^2 = r^2
@@ -290,8 +286,8 @@ y^2 + x^2 = r^2
 </div>
 </div>
 </section>
-<section id="circumference-sampling" class="level2" data-number="3.2">
-<h2 data-number="3.2" class="anchored" data-anchor-id="circumference-sampling"><span class="header-section-number">3.2</span> Circumference sampling</h2>
+<section id="circumference-sampling" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="circumference-sampling"><span class="header-section-number">2.2</span> Circumference sampling</h2>
 <p>This method is simple, but it has a couple of problems, resulting in a non-uniform density of points. The most obvious problem is, that the points are denser around the circles’ center. The problem arises because the circumference of the circle grows with <span class="math inline">\(r_{\text{sampled}}\)</span> but the number of samples <span class="math inline">\(k\)</span> doesn’t, as shown in this image.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
@@ -334,8 +330,8 @@ c = 2 \pi r_{\text{sampled}}
 </div>
 </div>
 </section>
-<section id="inverse" class="level2" data-number="3.3">
-<h2 data-number="3.3" class="anchored" data-anchor-id="inverse"><span class="header-section-number">3.3</span> Inverse</h2>
+<section id="inverse" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="inverse"><span class="header-section-number">2.3</span> Inverse</h2>
 <p>Now we notice the second problem: It seems like there are fewer points at the bottom of the diagram. To explain what’s going on, it’s easier to look at a single circle generated with this approach.</p>
 <div class="cell" data-execution_count="17">
 <details>
@@ -430,8 +426,8 @@ c = 2 \pi r_{\text{sampled}}
 </div>
 </div>
 </section>
-<section id="full-circle" class="level2" data-number="3.4">
-<h2 data-number="3.4" class="anchored" data-anchor-id="full-circle"><span class="header-section-number">3.4</span> Full circle</h2>
+<section id="full-circle" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="full-circle"><span class="header-section-number">2.4</span> Full circle</h2>
 <p>Using the <span class="math inline">\(c\)</span> as a factor for the number of samples <span class="math inline">\(k\)</span> and by inversing <span class="math inline">\(x\)</span> and <span class="math inline">\(y\)</span> by chance, we can finally generate a full circle. This is done by sampling <span class="math inline">\(x \in [-r_{\text{sampled}}, r_{\text{sampled}}]\)</span> and mirroring the point on the x-axis by chance.</p>
 <div class="cell" data-execution_count="25">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
@@ -542,8 +538,8 @@ c = 2 \pi r_{\text{sampled}}
 </details>
 </div>
 </section>
-<section id="blurring-the-lines" class="level2" data-number="3.5">
-<h2 data-number="3.5" class="anchored" data-anchor-id="blurring-the-lines"><span class="header-section-number">3.5</span> Blurring the lines</h2>
+<section id="blurring-the-lines" class="level2" data-number="2.5">
+<h2 data-number="2.5" class="anchored" data-anchor-id="blurring-the-lines"><span class="header-section-number">2.5</span> Blurring the lines</h2>
 <p>However, with this approach, we will encounter a final problem. For small values of <code>r_granularity</code>, it becomes clear that the points are sampled on separate circles.</p>
 <div class="cell" data-execution_count="26">
 <details>
@@ -660,8 +656,8 @@ c = 2 \pi r_{\text{sampled}}
 </div>
 </section>
 </section>
-<section id="extra" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> Extra</h1>
+<section id="extra" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Extra</h1>
 <p>The approach introduced in the previous sections works not only for circles but also for other shapes. The different components like <a href="#eq-r">Equation&nbsp;1</a> or the ways of mirroring can be adjusted to create entirely new shapes with uniformly sampled points. I will leave it up to the reader to find the changes made to each of these following shapes, resulting in this variety.</p>
 <div class="cell" data-execution_count="28">
 <details>

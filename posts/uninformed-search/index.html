@@ -365,19 +365,19 @@ Note
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-3" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="2" data-code-cell="annotated-cell-3" data-code-annotation="1">Array to keep track of visited states. This is used to avoid loops in cyclic graphs.</span>
+<span data-code-cell="annotated-cell-3" data-code-lines="2" data-code-annotation="1">Array to keep track of visited states. This is used to avoid loops in cyclic graphs.</span>
 </dd>
 <dt data-target-cell="annotated-cell-3" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-lines="3" data-code-cell="annotated-cell-3" data-code-annotation="2">Stack to keep track of the frontier</span>
+<span data-code-cell="annotated-cell-3" data-code-lines="3" data-code-annotation="2">Stack to keep track of the frontier</span>
 </dd>
 <dt data-target-cell="annotated-cell-3" data-target-annotation="3">3</dt>
 <dd>
-<span data-code-lines="6" data-code-cell="annotated-cell-3" data-code-annotation="3">We always explore the latest state that was discovered</span>
+<span data-code-cell="annotated-cell-3" data-code-lines="6" data-code-annotation="3">We always explore the latest state that was discovered</span>
 </dd>
 <dt data-target-cell="annotated-cell-3" data-target-annotation="4">4</dt>
 <dd>
-<span data-code-lines="14" data-code-cell="annotated-cell-3" data-code-annotation="4">We won’t visit already explored states, as this will be redundant</span>
+<span data-code-cell="annotated-cell-3" data-code-lines="14" data-code-annotation="4">We won’t visit already explored states, as this will be redundant</span>
 </dd>
 </dl>
 </div>
@@ -430,7 +430,7 @@ Visiting F</code></pre>
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-4" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-lines="3,6" data-code-cell="annotated-cell-4" data-code-annotation="2">In Python, we can implement a queue by popping the first element (instead of the last, as in the stack)</span>
+<span data-code-cell="annotated-cell-4" data-code-lines="3,6" data-code-annotation="2">In Python, we can implement a queue by popping the first element (instead of the last, as in the stack)</span>
 </dd>
 </dl>
 </div>
@@ -503,15 +503,15 @@ Visiting F</code></pre>
 <dl class="code-annotation-container-grid">
 <dt data-target-cell="annotated-cell-5" data-target-annotation="1">1</dt>
 <dd>
-<span data-code-lines="2" data-code-cell="annotated-cell-5" data-code-annotation="1">We keep track of the visited states, so we can prevent redundant exploration, but in UCS, we also have to remember the cost of the visit because we could reach the same state from different children in a cyclic graph</span>
+<span data-code-cell="annotated-cell-5" data-code-lines="2" data-code-annotation="1">We keep track of the visited states, so we can prevent redundant exploration, but in UCS, we also have to remember the cost of the visit because we could reach the same state from different children in a cyclic graph</span>
 </dd>
 <dt data-target-cell="annotated-cell-5" data-target-annotation="2">2</dt>
 <dd>
-<span data-code-lines="3" data-code-cell="annotated-cell-5" data-code-annotation="2">UCS uses a priority queue, which orders all elements by cost in ascending order</span>
+<span data-code-cell="annotated-cell-5" data-code-lines="3" data-code-annotation="2">UCS uses a priority queue, which orders all elements by cost in ascending order</span>
 </dd>
 <dt data-target-cell="annotated-cell-5" data-target-annotation="3">3</dt>
 <dd>
-<span data-code-lines="32" data-code-cell="annotated-cell-5" data-code-annotation="3">To be as efficient as possible, we discard paths that cross a known node and have a higher cost because this will never be the most efficient path anyway.</span>
+<span data-code-cell="annotated-cell-5" data-code-lines="32" data-code-annotation="3">To be as efficient as possible, we discard paths that cross a known node and have a higher cost because this will never be the most efficient path anyway.</span>
 </dd>
 </dl>
 </div>

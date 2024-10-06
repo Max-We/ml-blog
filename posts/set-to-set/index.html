@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Maximilian Weichart">
+<meta name="author" content="Noah Meißner">
+<meta name="dcterms.date" content="2024-10-06">
+<meta name="description" content="Not all data is sequential. How can neural networks be applied to non-sequential data like sets, when the Seq-to-Seq paradigm fails?">
+
+<title>MW - Set-to-Set: An extension of the Seq-to-Seq paradigm using attention</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../images/favicon.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="MW - Set-to-Set: An extension of the Seq-to-Seq paradigm using attention">
+<meta property="og:description" content="Not all data is sequential. How can neural networks be applied to non-sequential data like sets, when the Seq-to-Seq paradigm fails?">
+<meta property="og:image" content="https://maximilian-weichart.de/posts/set-to-set/images/set-to-set.png">
+<meta property="og:site-name" content="MW">
+<meta property="og:image:height" content="443">
+<meta property="og:image:width" content="800">
+<meta name="twitter:title" content="MW - Set-to-Set: An extension of the Seq-to-Seq paradigm using attention">
+<meta name="twitter:description" content="Not all data is sequential. How can neural networks be applied to non-sequential data like sets, when the Seq-to-Seq paradigm fails?">
+<meta name="twitter:image" content="https://maximilian-weichart.de/posts/set-to-set/images/set-to-set.png">
+<meta name="twitter:image-height" content="443">
+<meta name="twitter:image-width" content="800">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../images/favicon.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">MW</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html" rel="" target="">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Max-We" rel="" target=""><i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+</ul>
+            <div class="quarto-navbar-tools">
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Set-to-Set: An extension of the Seq-to-Seq paradigm using attention</h1>
+                  <div>
+        <div class="description">
+          Not all data is sequential. How can neural networks be applied to non-sequential data like sets, when the Seq-to-Seq paradigm fails?
+        </div>
+      </div>
+                </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Authors</div>
+      <div class="quarto-title-meta-contents">
+               <p>Maximilian Weichart </p>
+               <p>Noah Meißner </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">October 6, 2024</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#motivation" id="toc-motivation" class="nav-link active" data-scroll-target="#motivation"><span class="header-section-number">1</span> Motivation</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup"><span class="header-section-number">2</span> Setup</a>
+  <ul class="collapse">
+  <li><a href="#dataset" id="toc-dataset" class="nav-link" data-scroll-target="#dataset"><span class="header-section-number">2.1</span> Dataset</a></li>
+  <li><a href="#training-functions" id="toc-training-functions" class="nav-link" data-scroll-target="#training-functions"><span class="header-section-number">2.2</span> Training functions</a></li>
+  </ul></li>
+  <li><a href="#models" id="toc-models" class="nav-link" data-scroll-target="#models"><span class="header-section-number">3</span> Models</a>
+  <ul class="collapse">
+  <li><a href="#sec-ff" id="toc-sec-ff" class="nav-link" data-scroll-target="#sec-ff"><span class="header-section-number">3.1</span> Feed-Forward Network</a></li>
+  <li><a href="#sec-s2s" id="toc-sec-s2s" class="nav-link" data-scroll-target="#sec-s2s"><span class="header-section-number">3.2</span> Seq-to-Seq</a></li>
+  <li><a href="#sec-embedding" id="toc-sec-embedding" class="nav-link" data-scroll-target="#sec-embedding"><span class="header-section-number">3.3</span> Seq-to-Seq with Embeddings</a></li>
+  <li><a href="#sec-attention" id="toc-sec-attention" class="nav-link" data-scroll-target="#sec-attention"><span class="header-section-number">3.4</span> Seq-to-Seq with Attention</a></li>
+  <li><a href="#sec-pointer" id="toc-sec-pointer" class="nav-link" data-scroll-target="#sec-pointer"><span class="header-section-number">3.5</span> Seq-to-Seq with Pointers</a></li>
+  <li><a href="#sec-rpw" id="toc-sec-rpw" class="nav-link" data-scroll-target="#sec-rpw"><span class="header-section-number">3.6</span> Read-Process-Write Architecture</a></li>
+  </ul></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">4</span> Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block page-columns page-full" id="quarto-document-content">
+
+
+
+
+<section id="motivation" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="motivation"><span class="header-section-number">1</span> Motivation</h2>
+<p>Sequence-to-sequence (Seq-to-Seq) models are a common solution for tasks with a natural sequential structure, such as translating sentences into another language <span class="citation" data-cites="sutskever-2014">(<a href="#ref-sutskever-2014" role="doc-biblioref">Sutskever, Vinyals, and Le 2014</a>)</span>. These models are particularly useful because they can handle variable-length inputs and outputs. But what happens when the underlying task has no order?</p>
+<p>Sorting a set of numbers is a good example, which we explore in this article. Here, a Seq-to-Seq model would not work optimally because the order of the numbers in the input data could affect the result <span class="citation" data-cites="vinyals-2015A">(<a href="#ref-vinyals-2015A" role="doc-biblioref">Vinyals, Bengio, and Kudlur 2015</a>)</span>. This highlights the limitations of Seq-to-Seq when it comes to processing sets rather than sequences.</p>
+<p>In the following sections, we will explore how to develop an architecture that can handle such Set-to-Set tasks. The implementations presented are based on theory from several scientific papers, including concepts such as attention <span class="citation" data-cites="graves-2014">(<a href="#ref-graves-2014" role="doc-biblioref">Graves, Wayne, and Danihelka 2014</a>)</span>, pointer networks <span class="citation" data-cites="vinyals-2015B">(<a href="#ref-vinyals-2015B" role="doc-biblioref">Vinyals, Fortunato, and Jaitly 2015</a>)</span>, and the Read-Process-Write architecture <span class="citation" data-cites="vinyals-2015A">(<a href="#ref-vinyals-2015A" role="doc-biblioref">Vinyals, Bengio, and Kudlur 2015</a>)</span>.</p>
+</section>
+<section id="setup" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="setup"><span class="header-section-number">2</span> Setup</h2>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>In order to understand the following content, we assume basic knowledge of neural networks, backpropagation and Seq-to-Seq models. We will rely on the PyTorch library for the implementation. We have provided further literature for each approach. This can be used both to deepen your knowledge and to go deeper into a topic if you are having difficulty understanding it.</p>
+</div>
+</div>
+<section id="dataset" class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="dataset"><span class="header-section-number">2.1</span> Dataset</h3>
+<p>As a benchmark for the models in this experiment, we will conduct a number-sorting experiment similar to <span class="citation" data-cites="vinyals-2015A">Vinyals, Bengio, and Kudlur (<a href="#ref-vinyals-2015A" role="doc-biblioref">2015</a>)</span> on arrays with a length <span class="math inline">\(s\)</span> (controlled by a hyperparameter) containing numbers normalized to <span class="math inline">\([-1;1]\)</span>. The network will receive an unordered array <span class="math inline">\(x\)</span> and has to learn to output an ordered array <span class="math inline">\(y\)</span>.</p>
+<div class="cell" data-execution_count="2">
+<details>
+<summary>Hyperparameters</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Dataset</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>SEQ_LENGTH <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>NUM_SAMPLES <span class="op">=</span> <span class="dv">2000</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Model</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>ITEM_SIZE <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>EMBEDDING_SIZE <span class="op">=</span> <span class="dv">32</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>HIDDEN_SIZE <span class="op">=</span> <span class="dv">32</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>BATCH_SIZE <span class="op">=</span> <span class="dv">256</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>PROCESS_STEPS <span class="op">=</span> <span class="dv">5</span> <span class="co"># RPW model</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Training</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>LR <span class="op">=</span> <span class="fl">0.01</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>N_EPOCHS <span class="op">=</span> <span class="dv">250</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DigitSortDataset(Dataset):</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, num_samples, seq_length):</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.num_samples <span class="op">=</span> num_samples</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.seq_length <span class="op">=</span> seq_length</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.data <span class="op">=</span> <span class="va">self</span>.generate_data()</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> generate_data(<span class="va">self</span>):</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        data <span class="op">=</span> []</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="va">self</span>.num_samples):</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>            sequence <span class="op">=</span> [random.random() <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="va">self</span>.seq_length)]</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            unsorted <span class="op">=</span> torch.tensor(sequence, dtype<span class="op">=</span>torch.float32)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>            sorted_seq <span class="op">=</span> torch.sort(unsorted)[<span class="dv">0</span>]</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>            data.append((unsorted, sorted_seq))</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> data</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__len__</span>(<span class="va">self</span>):</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.num_samples</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__getitem__</span>(<span class="va">self</span>, idx):</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.data[idx]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-execution_count="4">
+<details>
+<summary>Dataloader creation</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create the datasets</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>train_val_dataset <span class="op">=</span> DigitSortDataset(num_samples<span class="op">=</span>NUM_SAMPLES, seq_length<span class="op">=</span>SEQ_LENGTH)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Split the train_val_dataset</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>train_size <span class="op">=</span> <span class="bu">int</span>(<span class="fl">0.8</span> <span class="op">*</span> <span class="bu">len</span>(train_val_dataset))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>val_size <span class="op">=</span> <span class="bu">len</span>(train_val_dataset) <span class="op">-</span> train_size</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>train_dataset, val_dataset <span class="op">=</span> random_split(</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    train_val_dataset, [train_size, val_size]</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Create DataLoaders</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>train_loader <span class="op">=</span> DataLoader(train_dataset, batch_size<span class="op">=</span>BATCH_SIZE, shuffle<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>val_loader <span class="op">=</span> DataLoader(val_dataset, batch_size<span class="op">=</span>BATCH_SIZE)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>For the rest of this article, we will be using arrays with <span class="math inline">\(s=5\)</span>, but the reader can adjust this value in the Jupyter Notebook. An example for a training pair <span class="math inline">\((x,y)\)</span> from the data loader looks as follows:</p>
+<div class="cell" data-execution_count="5">
+<div class="cell-output cell-output-stdout">
+<pre><code>Example x: tensor([0.8946, 0.3203, 0.5510, 0.4022, 0.6636])
+Example y: tensor([0.3203, 0.4022, 0.5510, 0.6636, 0.8946])</code></pre>
+</div>
+</div>
+</section>
+<section id="training-functions" class="level3" data-number="2.2">
+<h3 data-number="2.2" class="anchored" data-anchor-id="training-functions"><span class="header-section-number">2.2</span> Training functions</h3>
+<p>As a final step for the setup, we will define a few functions which will be used to train and evaluate the models in the next few sections. You can ignore these functions for now, but if you’re interested in how they work, you can unfold the code-blok below.</p>
+<div class="cell" data-execution_count="6">
+<details>
+<summary>Training,</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> train(model, dataloader, use_cross_entropy):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    criterion <span class="op">=</span> nn.CrossEntropyLoss() <span class="cf">if</span> use_cross_entropy <span class="cf">else</span> nn.MSELoss()</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    optimizer <span class="op">=</span> optim.Adam(model.parameters(), lr<span class="op">=</span>LR)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    model.train()</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    total_loss <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> epoch <span class="kw">in</span> <span class="bu">range</span>(N_EPOCHS):</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        total_loss <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> batch <span class="kw">in</span> dataloader:</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>            unsorted, sorted_seq <span class="op">=</span> batch</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>            prediction <span class="op">=</span> model(unsorted)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> use_cross_entropy: <span class="co"># cross entropy if target are indices</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>                _, indices <span class="op">=</span> torch.sort(unsorted, dim<span class="op">=-</span><span class="dv">1</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>                target <span class="op">=</span> torch.argsort(indices, dim<span class="op">=-</span><span class="dv">1</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>: <span class="co"># MSE if target are values</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>                target <span class="op">=</span> sorted_seq</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>            loss <span class="op">=</span> criterion(prediction, target)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Backward pass and optimize</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>            optimizer.zero_grad()</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>            loss.backward()</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>            optimizer.step()</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>            total_loss <span class="op">+=</span> loss.item()</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>    final_loss <span class="op">=</span> total_loss <span class="op">/</span> <span class="bu">len</span>(dataloader)</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> model, final_loss</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> probs_to_x(probabilities, unsorted_sequence):</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    indices <span class="op">=</span> torch.argmax(probabilities, dim<span class="op">=-</span><span class="dv">1</span>)  <span class="co"># Shape: [255, 5]</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    batch_size, seq_len <span class="op">=</span> unsorted_sequence.shape</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    batch_indices <span class="op">=</span> torch.arange(batch_size).unsqueeze(<span class="dv">1</span>).expand(<span class="op">-</span><span class="dv">1</span>, seq_len)</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> unsorted_sequence[batch_indices, indices]  <span class="co"># Shape: [255, 5]</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> evaluate(model, dataloader):</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>    model.<span class="bu">eval</span>()</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>    n <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>    n_right <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    total_divergence <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> torch.no_grad():</span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> batch <span class="kw">in</span> dataloader:</span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>            unsorted, sorted_seq <span class="op">=</span> batch</span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>            output <span class="op">=</span> model(unsorted)</span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="bu">len</span>(output.shape) <span class="op">==</span> <span class="dv">3</span>:</span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>                prediction <span class="op">=</span> probs_to_x(output, unsorted)</span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>                prediction <span class="op">=</span> output</span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>            total_divergence <span class="op">+=</span> (sorted_seq <span class="op">-</span> prediction).<span class="bu">abs</span>().<span class="bu">sum</span>().item()</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>            n_right <span class="op">+=</span> (sorted_seq <span class="op">==</span> prediction).<span class="bu">sum</span>().item()</span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>            n <span class="op">+=</span> sorted_seq.size(<span class="dv">0</span>) <span class="op">*</span> sorted_seq.size(<span class="dv">1</span>)</span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>    accuracy <span class="op">=</span> <span class="ss">f"</span><span class="sc">{</span>((n_right <span class="op">/</span> n) <span class="op">*</span> <span class="dv">100</span>)<span class="sc">:.2f}</span><span class="ss">%"</span></span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>    avg_divergence <span class="op">=</span> total_divergence <span class="op">/</span> n</span>
+<span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> accuracy, avg_divergence</span>
+<span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> report_training_results(model_name, accuracy, divergence, embedding_size<span class="op">=</span>EMBEDDING_SIZE):</span>
+<span id="cb5-62"><a href="#cb5-62" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Function report training results and hyperparameters in a table"""</span></span>
+<span id="cb5-63"><a href="#cb5-63" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> {</span>
+<span id="cb5-64"><a href="#cb5-64" aria-hidden="true" tabindex="-1"></a>        <span class="st">'Metric'</span>: [<span class="st">'Model'</span>, <span class="st">'Embedding Size'</span>, <span class="st">'Sequence Length'</span>, <span class="st">'Training Epochs'</span>, <span class="st">'Accuracy'</span>, <span class="st">'Avg. Divergence'</span>],</span>
+<span id="cb5-65"><a href="#cb5-65" aria-hidden="true" tabindex="-1"></a>        <span class="st">'Value'</span>: [model_name, embedding_size, SEQ_LENGTH, N_EPOCHS, accuracy, divergence]</span>
+<span id="cb5-66"><a href="#cb5-66" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-67"><a href="#cb5-67" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-68"><a href="#cb5-68" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> pd.DataFrame(data)</span>
+<span id="cb5-69"><a href="#cb5-69" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> df</span>
+<span id="cb5-70"><a href="#cb5-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-71"><a href="#cb5-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-72"><a href="#cb5-72" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> inspect(model, dataloader, is_pointer_network):</span>
+<span id="cb5-73"><a href="#cb5-73" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Function to look at model predictions / target values directly"""</span></span>
+<span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a>    model.<span class="bu">eval</span>()</span>
+<span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a>    batch <span class="op">=</span> <span class="bu">next</span>(<span class="bu">iter</span>(dataloader))</span>
+<span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a>    unsorted, sorted_seq <span class="op">=</span> batch</span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>    prediction <span class="op">=</span> model(unsorted)</span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> is_pointer_network:</span>
+<span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>        prediction <span class="op">=</span> probs_to_x(prediction, unsorted)</span>
+<span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a>    results <span class="op">=</span> [</span>
+<span id="cb5-82"><a href="#cb5-82" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-83"><a href="#cb5-83" aria-hidden="true" tabindex="-1"></a>            <span class="st">'Example Nr.'</span>: i,</span>
+<span id="cb5-84"><a href="#cb5-84" aria-hidden="true" tabindex="-1"></a>            <span class="st">'Type'</span>: t,</span>
+<span id="cb5-85"><a href="#cb5-85" aria-hidden="true" tabindex="-1"></a>            <span class="st">'Values'</span>: <span class="st">','</span>.join(<span class="ss">f'</span><span class="sc">{</span>x<span class="sc">:.4f}</span><span class="ss">'</span> <span class="cf">for</span> x <span class="kw">in</span> seq[i].tolist())</span>
+<span id="cb5-86"><a href="#cb5-86" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-87"><a href="#cb5-87" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> i <span class="kw">in</span> [<span class="dv">0</span>, <span class="dv">5</span>, <span class="dv">10</span>]</span>
+<span id="cb5-88"><a href="#cb5-88" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t, seq <span class="kw">in</span> <span class="bu">zip</span>([<span class="st">'input'</span>, <span class="st">'prediction'</span>, <span class="st">'target'</span>], [unsorted, prediction, sorted_seq])</span>
+<span id="cb5-89"><a href="#cb5-89" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb5-90"><a href="#cb5-90" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-91"><a href="#cb5-91" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(results)</span>
+<span id="cb5-92"><a href="#cb5-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-93"><a href="#cb5-93" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> visualize_divergence(df):</span>
+<span id="cb5-94"><a href="#cb5-94" aria-hidden="true" tabindex="-1"></a>    unique_examples <span class="op">=</span> df[<span class="st">'Example Nr.'</span>].unique()</span>
+<span id="cb5-95"><a href="#cb5-95" aria-hidden="true" tabindex="-1"></a>    example_index <span class="op">=</span> unique_examples[<span class="dv">0</span>]</span>
+<span id="cb5-96"><a href="#cb5-96" aria-hidden="true" tabindex="-1"></a>    df_example <span class="op">=</span> df[df[<span class="st">'Example Nr.'</span>]<span class="op">==</span>example_index]</span>
+<span id="cb5-97"><a href="#cb5-97" aria-hidden="true" tabindex="-1"></a>    arr_input <span class="op">=</span> np.array([<span class="bu">float</span>(value) <span class="cf">for</span> value <span class="kw">in</span> df_example[df_example[<span class="st">'Type'</span>] <span class="op">==</span> <span class="st">'input'</span>][<span class="st">'Values'</span>].values[<span class="dv">0</span>].split(<span class="st">','</span>)])</span>
+<span id="cb5-98"><a href="#cb5-98" aria-hidden="true" tabindex="-1"></a>    arr_prediction <span class="op">=</span> np.array([<span class="bu">float</span>(value) <span class="cf">for</span> value <span class="kw">in</span> df_example[df_example[<span class="st">'Type'</span>] <span class="op">==</span> <span class="st">'prediction'</span>][<span class="st">'Values'</span>].values[<span class="dv">0</span>].split(<span class="st">','</span>)])</span>
+<span id="cb5-99"><a href="#cb5-99" aria-hidden="true" tabindex="-1"></a>    arr_target <span class="op">=</span> np.array([<span class="bu">float</span>(value) <span class="cf">for</span> value <span class="kw">in</span> df_example[df_example[<span class="st">'Type'</span>] <span class="op">==</span> <span class="st">'target'</span>][<span class="st">'Values'</span>].values[<span class="dv">0</span>].split(<span class="st">','</span>)])</span>
+<span id="cb5-100"><a href="#cb5-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-101"><a href="#cb5-101" aria-hidden="true" tabindex="-1"></a>    arr_divergence <span class="op">=</span> arr_prediction <span class="op">-</span> arr_target</span>
+<span id="cb5-102"><a href="#cb5-102" aria-hidden="true" tabindex="-1"></a>    indices <span class="op">=</span> np.arange(<span class="bu">len</span>(arr_divergence))</span>
+<span id="cb5-103"><a href="#cb5-103" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-104"><a href="#cb5-104" aria-hidden="true" tabindex="-1"></a>    bar_width <span class="op">=</span> <span class="fl">0.95</span>  </span>
+<span id="cb5-105"><a href="#cb5-105" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">4</span>))</span>
+<span id="cb5-106"><a href="#cb5-106" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-107"><a href="#cb5-107" aria-hidden="true" tabindex="-1"></a>    bars <span class="op">=</span> ax.bar(indices, arr_divergence, bar_width, color<span class="op">=</span><span class="st">'royalblue'</span>, edgecolor<span class="op">=</span><span class="st">'black'</span>, alpha<span class="op">=</span><span class="fl">0.7</span>)</span>
+<span id="cb5-108"><a href="#cb5-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-109"><a href="#cb5-109" aria-hidden="true" tabindex="-1"></a>    ax.set_xlabel(<span class="st">'Index in Array'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb5-110"><a href="#cb5-110" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">'Divergence'</span>, fontsize<span class="op">=</span><span class="dv">12</span>)</span>
+<span id="cb5-111"><a href="#cb5-111" aria-hidden="true" tabindex="-1"></a>    ax.set_title(<span class="st">'Divergence per Index'</span>.<span class="bu">format</span>(example_index), fontsize<span class="op">=</span><span class="dv">13</span>)</span>
+<span id="cb5-112"><a href="#cb5-112" aria-hidden="true" tabindex="-1"></a>    ax.legend([<span class="st">'Divergence'</span>], loc<span class="op">=</span><span class="st">'upper right'</span>)</span>
+<span id="cb5-113"><a href="#cb5-113" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-114"><a href="#cb5-114" aria-hidden="true" tabindex="-1"></a>    ax.yaxis.grid(<span class="va">True</span>, linestyle<span class="op">=</span><span class="st">'--'</span>, alpha<span class="op">=</span><span class="fl">0.7</span>)</span>
+<span id="cb5-115"><a href="#cb5-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-116"><a href="#cb5-116" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> bar <span class="kw">in</span> bars:</span>
+<span id="cb5-117"><a href="#cb5-117" aria-hidden="true" tabindex="-1"></a>        yval <span class="op">=</span> bar.get_height()</span>
+<span id="cb5-118"><a href="#cb5-118" aria-hidden="true" tabindex="-1"></a>        ax.text(bar.get_x() <span class="op">+</span> bar.get_width()<span class="op">/</span><span class="dv">2</span>, yval, <span class="bu">round</span>(yval, <span class="dv">2</span>), ha<span class="op">=</span><span class="st">'center'</span>, va<span class="op">=</span><span class="st">'bottom'</span>, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb5-119"><a href="#cb5-119" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-120"><a href="#cb5-120" aria-hidden="true" tabindex="-1"></a>    ax.set_ylim(<span class="bu">min</span>(arr_divergence) <span class="op">-</span> <span class="dv">1</span>, <span class="bu">max</span>(arr_divergence) <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb5-121"><a href="#cb5-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-122"><a href="#cb5-122" aria-hidden="true" tabindex="-1"></a>    plt.tight_layout()</span>
+<span id="cb5-123"><a href="#cb5-123" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="models" class="level2 page-columns page-full" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="models"><span class="header-section-number">3</span> Models</h2>
+<div class="page-columns page-full"><p>Now we will introduce potential solutions to Set-to-Set problem<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> introduced earlier.</p><div class="no-row-height column-margin column-container"><li id="fn1"><p><sup>1</sup>&nbsp;In our case of sorting numbers, it would be more accurate to call it a Set-to-Seq problem, but we’ll use “Set-to-Set” in this articles to emphasize the non-sequential data.</p></li></div></div>
+<section id="sec-ff" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="sec-ff"><span class="header-section-number">3.1</span> Feed-Forward Network</h3>
+<p>As a baseline model, we will implement a feed-forward network with input- and output dimensions <span class="math inline">\(s\)</span>, which is one of the simplest types of neural networks <span class="citation" data-cites="bebis-1994">(<a href="#ref-bebis-1994" role="doc-biblioref">Bebis and Georgiopoulos 1994</a>)</span>. The structure of the network consists of a single linear layer followed by a <code>LeakyReLU</code> activation function. We are using <code>LeakyReLU</code> because the input values can be positive and negative.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Further Reading
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><a href="https://medium.com/@sasirekharameshkumar/deep-learning-basics-part-10-feed-forward-neural-networks-ffnn-93a708f84a31">Deep Learning Basics — Part 7 — Feed Forward Neural Networks (FFNN)- medium</a></li>
+<li><a href="https://www.geeksforgeeks.org/feedforward-neural-network/">Feedforward neural network - geeksforgeeks</a></li>
+</ul>
+</div>
+</div>
+<div class="cell" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> LinearFF(nn.Module):</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, s):</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.l <span class="op">=</span> nn.Linear(s, s, bias<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.a <span class="op">=</span> nn.LeakyReLU()</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, x):</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.a(<span class="va">self</span>.l(x))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Training this model achieves the following results on our evaluation-set.</p>
+<div class="cell" data-execution_count="8">
+<div class="cell-output cell-output-display" data-execution_count="8">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-results-ff" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;1: Training &amp; evaluation metrics for the feed-forward model</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Metric</th>
+<th data-quarto-table-cell-role="th">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Model</td>
+<td>Feed-Forward</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Embedding Size</td>
+<td>None</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Sequence Length</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Training Epochs</td>
+<td>250</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Accuracy</td>
+<td>0.00%</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Avg. Divergence</td>
+<td>0.095851</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<p>The evaluation of our model shows an accuracy score of 0%, mainly because the model struggles to predict <code>Float32</code> values with full accuracy. As the accuracy metric alone doesn’t fully capture the model’s performance, we also calculated the average divergence as a complementary measure. This statistic reflects the positive or negative deviation of the model output from its corresponding target value at each index in the array.</p>
+<div class="cell" data-execution_count="9">
+<div class="cell-output cell-output-display">
+<div id="fig-inspect-ff" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-inspect-ff-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;1: Concrete predictions and training pairs for the feed-forward model</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Additionally, we will inspect a few samples from the evaluation set, combined with the model output.</p>
+<div class="cell" data-execution_count="10">
+<div class="cell-output cell-output-display" data-execution_count="10">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Example Nr.</th>
+<th data-quarto-table-cell-role="th">Type</th>
+<th data-quarto-table-cell-role="th">Values</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0</td>
+<td>input</td>
+<td>0.0850,0.4038,0.4878,0.6103,0.6019</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0</td>
+<td>prediction</td>
+<td>0.1571,0.3136,0.4480,0.5758,0.6981</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0</td>
+<td>target</td>
+<td>0.0850,0.4038,0.4878,0.6019,0.6103</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>5</td>
+<td>input</td>
+<td>0.5476,0.8797,0.8482,0.5416,0.5308</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>5</td>
+<td>prediction</td>
+<td>0.2360,0.4701,0.6863,0.8853,1.0755</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>5</td>
+<td>target</td>
+<td>0.5308,0.5416,0.5476,0.8482,0.8797</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>10</td>
+<td>input</td>
+<td>0.9732,0.6948,0.5976,0.8599,0.2902</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>10</td>
+<td>prediction</td>
+<td>0.2506,0.4770,0.7003,0.8977,1.0958</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>10</td>
+<td>target</td>
+<td>0.2902,0.5976,0.6948,0.8599,0.9732</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>We can observe that the model seems to make reasonable predictions, but they are imprecise and often include made-up values which are not present in the input-array.</p>
+<p>Based on the evaluation, we noticed two further disadvantages of the model architecture in addition to performance:</p>
+<ul>
+<li><strong>Fixed input and output size (problem 1):</strong> The model works with a fixed size <span class="math inline">\(s\)</span> for both inputs and outputs. This limits flexibility and makes it difficult to deal with varying data sets.<br>
+</li>
+<li><strong>Simultaneous processing of all inputs (problem 2):</strong> All inputs are used simultaneously to generate all outputs. However, in the case of sorting arrays, the output of a value and the previous values are dependent on each other. This also has the effect that an input value can appear several times in the output of the <em>FF-network</em> instead of just once.</li>
+</ul>
+<p>These limitations contribute to the suboptimal performance of the model and highlight the need to revise the architecture to improve efficiency and accuracy.</p>
+</section>
+<section id="sec-s2s" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="sec-s2s"><span class="header-section-number">3.2</span> Seq-to-Seq</h3>
+<p>To find a solution to these problems, we have defined a Seq-to-Seq model using a recurrent architecture with an LSTM <span class="citation" data-cites="hochreiter-1997">(<a href="#ref-hochreiter-1997" role="doc-biblioref">Hochreiter and Schmidhuber 1997</a>)</span>. It generates outputs <em>autoregressive</em>, meaning that the previous outputs from the model are used to produce the next output. Additionally, this autoregressive nature also allows us to process variable-sized inputs, eliminating both of the problems that the baseline feed-forward architecture in the previous section has.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Further Reading
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><a href="https://medium.com/@rebeen.jaff/what-is-lstm-introduction-to-long-short-term-memory-66bd3855b9ce">What is LSTM? Introduction to Long Short-Term Memory - medium</a></li>
+<li><a href="https://www.geeksforgeeks.org/deep-learning-introduction-to-long-short-term-memory/">What is LSTM – Long Short Term Memory? - geeksforgeeks</a></li>
+</ul>
+</div>
+</div>
+<p>The Seq-to-Seq architecture, consisting of encoder and decoder, is visualized in <a href="#fig-s2s">Figure&nbsp;2</a></p>
+<div id="fig-s2s" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/s2s.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;2: Seq-to-Seq architecture</figcaption>
+</figure>
+</div>
+<p>Before we can generate outputs, the model must analyze the entire input. This is why we use an <em>encoder</em>, which processes the entire input sequence <span class="math inline">\(x\)</span> and then passes the hidden state <span class="math inline">\(e\)</span> to the decoder as context. The <em>decoder</em> receives the context <span class="math inline">\(e\)</span> from the encoder and uses it to generate the output <span class="math inline">\(y\)</span> in an <em>autoregressive</em> manner.</p>
+<p>Based on this architecture, we now define the model architecture in PyTorch.</p>
+<div class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="annotated-cell-6"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-6-1"><a href="#annotated-cell-6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> EncoderLstm(nn.Module):</span>
+<span id="annotated-cell-6-2"><a href="#annotated-cell-6-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size):</span>
+<span id="annotated-cell-6-3"><a href="#annotated-cell-6-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(EncoderLstm, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-6-4"><a href="#annotated-cell-6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-5"><a href="#annotated-cell-6-5" aria-hidden="true" tabindex="-1"></a>        <span class="co"># LSTM</span></span>
+<span id="annotated-cell-6-6"><a href="#annotated-cell-6-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lstm_cell <span class="op">=</span> nn.LSTMCell(input_size, hidden_size)</span>
+<span id="annotated-cell-6-7"><a href="#annotated-cell-6-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.hidden_size <span class="op">=</span> hidden_size</span>
+<span id="annotated-cell-6-8"><a href="#annotated-cell-6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-9"><a href="#annotated-cell-6-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs, h, c, s):</span>
+<span id="annotated-cell-6-10"><a href="#annotated-cell-6-10" aria-hidden="true" tabindex="-1"></a>        hs <span class="op">=</span> []</span>
+<span id="annotated-cell-6-11"><a href="#annotated-cell-6-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(s):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-6-12" class="code-annotation-target"><a href="#annotated-cell-6-12" aria-hidden="true" tabindex="-1"></a>            xt <span class="op">=</span> xs[:, t, :]</span>
+<span id="annotated-cell-6-13"><a href="#annotated-cell-6-13" aria-hidden="true" tabindex="-1"></a>            h, c <span class="op">=</span> <span class="va">self</span>.lstm_cell(xt, (h, c))</span>
+<span id="annotated-cell-6-14"><a href="#annotated-cell-6-14" aria-hidden="true" tabindex="-1"></a>            hs.append(h)</span>
+<span id="annotated-cell-6-15"><a href="#annotated-cell-6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-16"><a href="#annotated-cell-6-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> torch.stack(hs, dim<span class="op">=</span><span class="dv">1</span>), (h, c)</span>
+<span id="annotated-cell-6-17"><a href="#annotated-cell-6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-18"><a href="#annotated-cell-6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-19"><a href="#annotated-cell-6-19" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DecoderLstm(nn.Module):</span>
+<span id="annotated-cell-6-20"><a href="#annotated-cell-6-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size, output_size):</span>
+<span id="annotated-cell-6-21"><a href="#annotated-cell-6-21" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(DecoderLstm, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-6-22"><a href="#annotated-cell-6-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-23"><a href="#annotated-cell-6-23" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Variables</span></span>
+<span id="annotated-cell-6-24"><a href="#annotated-cell-6-24" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.input_size <span class="op">=</span> input_size</span>
+<span id="annotated-cell-6-25"><a href="#annotated-cell-6-25" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.hidden_size <span class="op">=</span> hidden_size</span>
+<span id="annotated-cell-6-26"><a href="#annotated-cell-6-26" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.output_size <span class="op">=</span> output_size</span>
+<span id="annotated-cell-6-27"><a href="#annotated-cell-6-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-28"><a href="#annotated-cell-6-28" aria-hidden="true" tabindex="-1"></a>        <span class="co"># LSTM</span></span>
+<span id="annotated-cell-6-29"><a href="#annotated-cell-6-29" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lstm_cell <span class="op">=</span> nn.LSTMCell(input_size, hidden_size)</span>
+<span id="annotated-cell-6-30"><a href="#annotated-cell-6-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-31"><a href="#annotated-cell-6-31" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Output</span></span>
+<span id="annotated-cell-6-32"><a href="#annotated-cell-6-32" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.fc <span class="op">=</span> nn.Sequential(</span>
+<span id="annotated-cell-6-33"><a href="#annotated-cell-6-33" aria-hidden="true" tabindex="-1"></a>            nn.Linear(hidden_size, output_size),</span>
+<span id="annotated-cell-6-34"><a href="#annotated-cell-6-34" aria-hidden="true" tabindex="-1"></a>            nn.Sigmoid()  <span class="co"># find out why this helps?</span></span>
+<span id="annotated-cell-6-35"><a href="#annotated-cell-6-35" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="annotated-cell-6-36"><a href="#annotated-cell-6-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-37"><a href="#annotated-cell-6-37" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs, h, c, s):</span>
+<span id="annotated-cell-6-38"><a href="#annotated-cell-6-38" aria-hidden="true" tabindex="-1"></a>        ys <span class="op">=</span> []</span>
+<span id="annotated-cell-6-39"><a href="#annotated-cell-6-39" aria-hidden="true" tabindex="-1"></a>        yt <span class="op">=</span> torch.zeros((xs.shape[<span class="dv">0</span>], <span class="va">self</span>.output_size))  <span class="co"># SOS</span></span>
+<span id="annotated-cell-6-40"><a href="#annotated-cell-6-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-41"><a href="#annotated-cell-6-41" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(s):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-6-42" class="code-annotation-target"><a href="#annotated-cell-6-42" aria-hidden="true" tabindex="-1"></a>            h, c <span class="op">=</span> <span class="va">self</span>.lstm_cell(yt, (h, c))</span>
+<span id="annotated-cell-6-43"><a href="#annotated-cell-6-43" aria-hidden="true" tabindex="-1"></a></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-6-44" class="code-annotation-target"><a href="#annotated-cell-6-44" aria-hidden="true" tabindex="-1"></a>            yt <span class="op">=</span> <span class="va">self</span>.fc(h)</span>
+<span id="annotated-cell-6-45"><a href="#annotated-cell-6-45" aria-hidden="true" tabindex="-1"></a>            ys.append(yt)</span>
+<span id="annotated-cell-6-46"><a href="#annotated-cell-6-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-47"><a href="#annotated-cell-6-47" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> torch.stack(ys, dim<span class="op">=</span><span class="dv">1</span>).squeeze(<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="annotated-cell-6-48"><a href="#annotated-cell-6-48" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="annotated-cell-6-49"><a href="#annotated-cell-6-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-50"><a href="#annotated-cell-6-50" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> SeqToSeq(nn.Module):</span>
+<span id="annotated-cell-6-51"><a href="#annotated-cell-6-51" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, encoder, decoder):</span>
+<span id="annotated-cell-6-52"><a href="#annotated-cell-6-52" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(SeqToSeq, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-6-53"><a href="#annotated-cell-6-53" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.encoder <span class="op">=</span> encoder</span>
+<span id="annotated-cell-6-54"><a href="#annotated-cell-6-54" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.decoder <span class="op">=</span> decoder</span>
+<span id="annotated-cell-6-55"><a href="#annotated-cell-6-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-56"><a href="#annotated-cell-6-56" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs):</span>
+<span id="annotated-cell-6-57"><a href="#annotated-cell-6-57" aria-hidden="true" tabindex="-1"></a>        xs <span class="op">=</span> xs.unsqueeze(<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="annotated-cell-6-58"><a href="#annotated-cell-6-58" aria-hidden="true" tabindex="-1"></a>        b, s <span class="op">=</span> xs.size()[<span class="dv">0</span>], xs.size()[<span class="dv">1</span>]</span>
+<span id="annotated-cell-6-59"><a href="#annotated-cell-6-59" aria-hidden="true" tabindex="-1"></a>        h, c <span class="op">=</span> torch.zeros(b, <span class="va">self</span>.encoder.hidden_size), torch.zeros(b, <span class="va">self</span>.encoder.hidden_size)</span>
+<span id="annotated-cell-6-60"><a href="#annotated-cell-6-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-6-61"><a href="#annotated-cell-6-61" aria-hidden="true" tabindex="-1"></a>        hs, (h, c) <span class="op">=</span> <span class="va">self</span>.encoder(xs, h, c, s)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-6" data-target-annotation="4" onclick="event.preventDefault();">4</a><span id="annotated-cell-6-62" class="code-annotation-target"><a href="#annotated-cell-6-62" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.decoder(hs, h, c, s)</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-6" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="12" data-code-cell="annotated-cell-6" data-code-annotation="1"><strong>Read in data:</strong> First, all input values are read in one after the other (sequentially)</span>
+</dd>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="42" data-code-cell="annotated-cell-6" data-code-annotation="2"><strong>Autoregressive output generation:</strong> The decoder generates it’s next hidden state by feeding previous outputs back into the LSTM</span>
+</dd>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-lines="44" data-code-cell="annotated-cell-6" data-code-annotation="3"><strong>LSTM Output Layer:</strong> The LSTM output is projected to a final output <span class="math inline">\(y\)</span> using a linear layer</span>
+</dd>
+<dt data-target-cell="annotated-cell-6" data-target-annotation="4">4</dt>
+<dd>
+<span data-code-lines="62" data-code-cell="annotated-cell-6" data-code-annotation="4"><strong>Initialize Decoder:</strong> The outputs (hidden states) and final hidden state from the encoder are used to initialize the decoder</span>
+</dd>
+</dl>
+</div>
+</div>
+<p>Afterward, we will use this architecture to train a new model.</p>
+<div class="cell" data-execution_count="12">
+<div class="cell-output cell-output-display" data-execution_count="12">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-results-s2s" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;2: Training &amp; evaluation metrics for the Seq-to-Seq model</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Metric</th>
+<th data-quarto-table-cell-role="th">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Model</td>
+<td>LSTM</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Embedding Size</td>
+<td>None</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Sequence Length</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Training Epochs</td>
+<td>250</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Accuracy</td>
+<td>0.00%</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Avg. Divergence</td>
+<td>0.025922</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<div class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># echo: false</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># inspect(model, val_loader, False)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Looking at the evaluation results, we observe an accuracy score of 0%, indicating that the precision problem of the Feed-Forward network (see <a href="#sec-ff">Section&nbsp;3.1</a>) has not yet been resolved. However, the average divergence is improving, suggesting the Seq-to-Seq architecture had a positive effect on the performance.</p>
+</section>
+<section id="sec-embedding" class="level3" data-number="3.3">
+<h3 data-number="3.3" class="anchored" data-anchor-id="sec-embedding"><span class="header-section-number">3.3</span> Seq-to-Seq with Embeddings</h3>
+<p>To improve the accuracy of the model, a logical next step would is to improve the input encoding via embeddings, instead of using the values as direct input to the model. Typically, an embedding layer can be implemented by a simple linear layer without bias and without an activation function.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Further Reading
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><a href="https://medium.com/@eugenesh4work/what-are-embeddings-and-how-do-it-work-b35af573b59e">What are Embeddings and how do it work? - medium</a></li>
+<li><a href="https://www.geeksforgeeks.org/deep-learning-introduction-to-long-short-term-memory/">What Is Embedding and What Can You Do with It - towardsdatascience</a></li>
+</ul>
+</div>
+</div>
+<div class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Embedder(nn.Module):</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, embedding_size):</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lin <span class="op">=</span> nn.Linear(<span class="dv">1</span>, embedding_size, bias<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs):</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.lin(xs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>To use this <code>Embedder</code> module in the previously defined <code>Seq-to-Seq</code> module, we will integrate it there.</p>
+<div class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="annotated-cell-9"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-9-1"><a href="#annotated-cell-9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> SeqToSeq(nn.Module):</span>
+<span id="annotated-cell-9-2"><a href="#annotated-cell-9-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, encoder, decoder, embedder<span class="op">=</span><span class="va">None</span>):</span>
+<span id="annotated-cell-9-3"><a href="#annotated-cell-9-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(SeqToSeq, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-9-4"><a href="#annotated-cell-9-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.embedder <span class="op">=</span> embedder</span>
+<span id="annotated-cell-9-5"><a href="#annotated-cell-9-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.encoder <span class="op">=</span> encoder</span>
+<span id="annotated-cell-9-6"><a href="#annotated-cell-9-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.decoder <span class="op">=</span> decoder</span>
+<span id="annotated-cell-9-7"><a href="#annotated-cell-9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-9-8"><a href="#annotated-cell-9-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs):</span>
+<span id="annotated-cell-9-9"><a href="#annotated-cell-9-9" aria-hidden="true" tabindex="-1"></a>        xs <span class="op">=</span> xs.unsqueeze(<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="annotated-cell-9-10"><a href="#annotated-cell-9-10" aria-hidden="true" tabindex="-1"></a>        b, s <span class="op">=</span> xs.size()[<span class="dv">0</span>], xs.size()[<span class="dv">1</span>]</span>
+<span id="annotated-cell-9-11"><a href="#annotated-cell-9-11" aria-hidden="true" tabindex="-1"></a>        h, c <span class="op">=</span> torch.zeros(b, <span class="va">self</span>.encoder.hidden_size), torch.zeros(b, <span class="va">self</span>.encoder.hidden_size)</span>
+<span id="annotated-cell-9-12"><a href="#annotated-cell-9-12" aria-hidden="true" tabindex="-1"></a></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-9" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-9-13" class="code-annotation-target"><a href="#annotated-cell-9-13" aria-hidden="true" tabindex="-1"></a>        es <span class="op">=</span> <span class="va">self</span>.embedder(xs) <span class="cf">if</span> <span class="va">self</span>.embedder <span class="cf">else</span> xs</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-9" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-9-14" class="code-annotation-target"><a href="#annotated-cell-9-14" aria-hidden="true" tabindex="-1"></a>        hs, (h, c) <span class="op">=</span> <span class="va">self</span>.encoder(es, h, c, s)</span>
+<span id="annotated-cell-9-15"><a href="#annotated-cell-9-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.decoder(hs, h, c, s)</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-9" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="13" data-code-cell="annotated-cell-9" data-code-annotation="1"><strong>Embedding generation:</strong> Each of the elements from the input sequence are converted to embeddings</span>
+</dd>
+<dt data-target-cell="annotated-cell-9" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="14" data-code-cell="annotated-cell-9" data-code-annotation="2"><strong>Input to the encoder:</strong> The embeddings are passed to the encoder (instead of the original input sequence)</span>
+</dd>
+</dl>
+</div>
+</div>
+<div class="cell" data-execution_count="16">
+<div class="cell-output cell-output-display" data-execution_count="16">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-results-embedding" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;3: Training &amp; evaluation metrics for the embedding Seq-to-Seq model</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Metric</th>
+<th data-quarto-table-cell-role="th">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Model</td>
+<td>LSTM + Embeddings</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Embedding Size</td>
+<td>32</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Sequence Length</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Training Epochs</td>
+<td>250</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Accuracy</td>
+<td>0.00%</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Avg. Divergence</td>
+<td>0.015684</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<p>By using embeddings, we can observe a continuous decrease in the average divergence.</p>
+</section>
+<section id="sec-attention" class="level3 page-columns page-full" data-number="3.4">
+<h3 data-number="3.4" class="anchored" data-anchor-id="sec-attention"><span class="header-section-number">3.4</span> Seq-to-Seq with Attention</h3>
+<p>Although the average divergence is improving, it is still not optimal. A common problem of Seq-to-Seq models is, that the hidden state of the encoder-LSTM can become a bottleneck for the entire model <span class="citation" data-cites="vinyals-2015A">(<a href="#ref-vinyals-2015A" role="doc-biblioref">Vinyals, Bengio, and Kudlur 2015</a>)</span>.</p>
+<p>This problem can be addressed using an attention-mechanism <span class="citation" data-cites="graves-2014">(<a href="#ref-graves-2014" role="doc-biblioref">Graves, Wayne, and Danihelka 2014</a>)</span>, where we not only pass the hidden state <span class="math inline">\(h\)</span> and the cell state <span class="math inline">\(c\)</span> to the decoder, but also include additional information from the original input sequence. This allows the decoder to analyze and weight the input sequences again before making predictions for the outputs.</p>
+<section id="how-does-the-attention-mechanism-work" class="level4 page-columns page-full" data-number="3.4.1">
+<h4 data-number="3.4.1" class="anchored" data-anchor-id="how-does-the-attention-mechanism-work"><span class="header-section-number">3.4.1</span> How does the attention mechanism work?</h4>
+<p>Foremost, we would like to emphasize that there are different types of attentional mechanisms <span class="citation" data-cites="graves-2014">(<a href="#ref-graves-2014" role="doc-biblioref">Graves, Wayne, and Danihelka 2014</a>)</span>. In this article, we will only focus on content based, specifically additive attention. For those interested in exploring other types of attention, additional resources are provided below.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Further Reading
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><a href="https://slds-lmu.github.io/seminar_nlp_ss20/attention-and-self-attention-for-nlp.html">Attention and Self-Attention for NLP - slds-lmu</a></li>
+<li><a href="https://www.youtube.com/watch?v=eMlx5fFNoYc">Attention in transformers, visually explained | Chapter 6, Deep Learning - 3Blue1Brown</a></li>
+</ul>
+</div>
+</div>
+<p>The following diagram displays how content-based attention is integrated in the encoder-decoder architecture.</p>
+<div id="fig-attention" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/content-attention.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;3: Encoder-decoder architecture with content-based attention</figcaption>
+</figure>
+</div>
+<p>To understand what’s going on, we will first introduce the basics of content-based attention. Here, we will re-use the following variables from <a href="#fig-s2s">Figure&nbsp;2</a>:</p>
+<ul>
+<li><span class="math inline">\(d\)</span>: decoder hidden state</li>
+<li><span class="math inline">\(e\)</span>: encoder hidden state</li>
+<li><span class="math inline">\(o\)</span>: encoder outputs</li>
+</ul>
+<div class="page-columns page-full"><p>Content-based attention as defined by <span class="citation" data-cites="vinyals-2015B">Vinyals, Fortunato, and Jaitly (<a href="#ref-vinyals-2015B" role="doc-biblioref">2015</a>)</span> consists of three steps<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>: First, we calculate a similarity-score <span class="math inline">\(u\)</span> between the encoder outputs <span class="math inline">\(o\)</span> and the decoder hidden states <span class="math inline">\(d\)</span>. Each of these scores indicates the relevance of a specific encoder output to the current decoder state.</p><div class="no-row-height column-margin column-container"><li id="fn2"><p><sup>2</sup>&nbsp;We use the same notation as in the paper here, with slight modifications</p></li></div></div>
+<p><span id="eq-u"><span class="math display">\[
+u_j = v^T \tanh(W_1 o_j + W_2 d)  
+\tag{1}\]</span></span></p>
+<p>In a second step, the softmax-function is applied to the attention-score, resulting in the attentions-weights <span class="math inline">\(a\)</span>.</p>
+<p><span id="eq-a"><span class="math display">\[a_j = \operatorname{softmax}(u_j) \tag{2}\]</span></span></p>
+<p>Finally, a context is calculated using the attention-weights <span class="math inline">\(a\)</span> and the encoder outputs <span class="math inline">\(o\)</span>.</p>
+<p><span id="eq-c"><span class="math display">\[d' = \sum_{j=1}^n a_j o_j \tag{3}\]</span></span></p>
+<p>By summing these values, we obtain our new hidden state <span class="math inline">\(d'\)</span> for the decoder, which has now been enhanced with additional knowledge about the input sequence.</p>
+<p>Going back to <a href="#fig-attention">Figure&nbsp;3</a>, <a href="#eq-u">Equation&nbsp;1</a> is displayed in red, <a href="#eq-a">Equation&nbsp;2</a> in orange and <a href="#eq-c">Equation&nbsp;3</a> in blue. We can see that without attention (grey colors), the decoder would be limited to the information provided in the encoder hidden state <span class="math inline">\(e\)</span>. But by using attention, the decoder can include information about the entire input sequence by comparing its own hidden state <span class="math inline">\(d\)</span> to the encoder outputs <span class="math inline">\(o\)</span> at each step while generating outputs. This should mitigate the bottleneck problem discussed in earlier sections (see <a href="#sec-s2s">Section&nbsp;3.2</a>).</p>
+</section>
+<section id="implementation" class="level4" data-number="3.4.2">
+<h4 data-number="3.4.2" class="anchored" data-anchor-id="implementation"><span class="header-section-number">3.4.2</span> Implementation</h4>
+<p>We will now proceed by implementing the attention-mechanism in PyTorch.</p>
+<div class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="annotated-cell-10"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-10-1"><a href="#annotated-cell-10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AdditiveAttention(nn.Module):</span>
+<span id="annotated-cell-10-2"><a href="#annotated-cell-10-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, key_size, query_size):</span>
+<span id="annotated-cell-10-3"><a href="#annotated-cell-10-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(AdditiveAttention, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-10-4"><a href="#annotated-cell-10-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.w1 <span class="op">=</span> nn.Linear(key_size, query_size, bias<span class="op">=</span><span class="va">False</span>)</span>
+<span id="annotated-cell-10-5"><a href="#annotated-cell-10-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.w2 <span class="op">=</span> nn.Linear(query_size, query_size, bias<span class="op">=</span><span class="va">False</span>)</span>
+<span id="annotated-cell-10-6"><a href="#annotated-cell-10-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.v <span class="op">=</span> nn.Linear(query_size, <span class="dv">1</span>, bias<span class="op">=</span><span class="va">False</span>)</span>
+<span id="annotated-cell-10-7"><a href="#annotated-cell-10-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.compress <span class="op">=</span> nn.Sequential(</span>
+<span id="annotated-cell-10-8"><a href="#annotated-cell-10-8" aria-hidden="true" tabindex="-1"></a>            nn.Linear(query_size <span class="op">*</span> <span class="dv">2</span>, query_size),</span>
+<span id="annotated-cell-10-9"><a href="#annotated-cell-10-9" aria-hidden="true" tabindex="-1"></a>            nn.Tanh()</span>
+<span id="annotated-cell-10-10"><a href="#annotated-cell-10-10" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="annotated-cell-10-11"><a href="#annotated-cell-10-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-10-12"><a href="#annotated-cell-10-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, key, query, create_context, compress_context<span class="op">=</span><span class="va">False</span>):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-10" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-10-13" class="code-annotation-target"><a href="#annotated-cell-10-13" aria-hidden="true" tabindex="-1"></a>        u <span class="op">=</span> <span class="va">self</span>.v(torch.tanh(<span class="va">self</span>.w1(key) <span class="op">+</span> <span class="va">self</span>.w2(query).unsqueeze(<span class="dv">1</span>))).squeeze(<span class="op">-</span><span class="dv">1</span>)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-10" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-10-14" class="code-annotation-target"><a href="#annotated-cell-10-14" aria-hidden="true" tabindex="-1"></a>        a <span class="op">=</span> F.softmax(u, dim<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="annotated-cell-10-15"><a href="#annotated-cell-10-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> create_context:</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-10" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-10-16" class="code-annotation-target"><a href="#annotated-cell-10-16" aria-hidden="true" tabindex="-1"></a>            r <span class="op">=</span> torch.bmm(a.unsqueeze(<span class="dv">1</span>), key).squeeze(<span class="dv">1</span>)</span>
+<span id="annotated-cell-10-17"><a href="#annotated-cell-10-17" aria-hidden="true" tabindex="-1"></a>            concat <span class="op">=</span> torch.cat([query, r], dim<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="annotated-cell-10-18"><a href="#annotated-cell-10-18" aria-hidden="true" tabindex="-1"></a>            context <span class="op">=</span> <span class="va">self</span>.compress(concat) <span class="cf">if</span> compress_context <span class="cf">else</span> concat</span>
+<span id="annotated-cell-10-19"><a href="#annotated-cell-10-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> context</span>
+<span id="annotated-cell-10-20"><a href="#annotated-cell-10-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="annotated-cell-10-21"><a href="#annotated-cell-10-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> a</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-10" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="13" data-code-cell="annotated-cell-10" data-code-annotation="1">Calculate the similarity-score <span class="math inline">\(u\)</span> (see <a href="#eq-u">Equation&nbsp;1</a>)</span>
+</dd>
+<dt data-target-cell="annotated-cell-10" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="14" data-code-cell="annotated-cell-10" data-code-annotation="2">Calculate the attention-weights <span class="math inline">\(a\)</span> via softmax on <span class="math inline">\(u\)</span> (see <a href="#eq-a">Equation&nbsp;2</a>)</span>
+</dd>
+<dt data-target-cell="annotated-cell-10" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-lines="16" data-code-cell="annotated-cell-10" data-code-annotation="3">“Combine” all the information into a single context, which will be used as the next decoder hidden state <span class="math inline">\(d'\)</span> (see <a href="#eq-c">Equation&nbsp;3</a>)</span>
+</dd>
+</dl>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Please ignore the <code>concat</code> and <code>compress</code> steps for now. These are used in the Read-Process-Write architecture introduced in the following sections.</p>
+</div>
+</div>
+<p>Finally, we will integrate the attention module into the decoder.</p>
+<div class="cell" data-execution_count="18">
+<div class="sourceCode cell-code" id="annotated-cell-11"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-11-1"><a href="#annotated-cell-11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DecoderLstm(nn.Module):</span>
+<span id="annotated-cell-11-2"><a href="#annotated-cell-11-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size, output_size, use_attention):</span>
+<span id="annotated-cell-11-3"><a href="#annotated-cell-11-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(DecoderLstm, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-11-4"><a href="#annotated-cell-11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-5"><a href="#annotated-cell-11-5" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Variables</span></span>
+<span id="annotated-cell-11-6"><a href="#annotated-cell-11-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.input_size <span class="op">=</span> input_size</span>
+<span id="annotated-cell-11-7"><a href="#annotated-cell-11-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.hidden_size <span class="op">=</span> hidden_size</span>
+<span id="annotated-cell-11-8"><a href="#annotated-cell-11-8" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.output_size <span class="op">=</span> output_size</span>
+<span id="annotated-cell-11-9"><a href="#annotated-cell-11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-10"><a href="#annotated-cell-11-10" aria-hidden="true" tabindex="-1"></a>        <span class="co"># LSTM</span></span>
+<span id="annotated-cell-11-11"><a href="#annotated-cell-11-11" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lstm_cell <span class="op">=</span> nn.LSTMCell(input_size, hidden_size)</span>
+<span id="annotated-cell-11-12"><a href="#annotated-cell-11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-13"><a href="#annotated-cell-11-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Attention</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-11" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-11-14" class="code-annotation-target"><a href="#annotated-cell-11-14" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.attention <span class="op">=</span> AdditiveAttention(hidden_size, hidden_size) <span class="cf">if</span> use_attention <span class="cf">else</span> <span class="va">None</span></span>
+<span id="annotated-cell-11-15"><a href="#annotated-cell-11-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-16"><a href="#annotated-cell-11-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Output</span></span>
+<span id="annotated-cell-11-17"><a href="#annotated-cell-11-17" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.fc <span class="op">=</span> nn.Sequential(</span>
+<span id="annotated-cell-11-18"><a href="#annotated-cell-11-18" aria-hidden="true" tabindex="-1"></a>            nn.Linear(hidden_size, output_size),</span>
+<span id="annotated-cell-11-19"><a href="#annotated-cell-11-19" aria-hidden="true" tabindex="-1"></a>            nn.Sigmoid()  <span class="co"># find out why this helps?</span></span>
+<span id="annotated-cell-11-20"><a href="#annotated-cell-11-20" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="annotated-cell-11-21"><a href="#annotated-cell-11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-22"><a href="#annotated-cell-11-22" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs, h, c, s):</span>
+<span id="annotated-cell-11-23"><a href="#annotated-cell-11-23" aria-hidden="true" tabindex="-1"></a>        ys <span class="op">=</span> []</span>
+<span id="annotated-cell-11-24"><a href="#annotated-cell-11-24" aria-hidden="true" tabindex="-1"></a>        yt <span class="op">=</span> torch.zeros((xs.shape[<span class="dv">0</span>], <span class="va">self</span>.output_size))  <span class="co"># SOS</span></span>
+<span id="annotated-cell-11-25"><a href="#annotated-cell-11-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-26"><a href="#annotated-cell-11-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(s):</span>
+<span id="annotated-cell-11-27"><a href="#annotated-cell-11-27" aria-hidden="true" tabindex="-1"></a>            h, c <span class="op">=</span> <span class="va">self</span>.lstm_cell(yt, (h, c))</span>
+<span id="annotated-cell-11-28"><a href="#annotated-cell-11-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-29"><a href="#annotated-cell-11-29" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="va">self</span>.attention:</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-11" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-11-30" class="code-annotation-target"><a href="#annotated-cell-11-30" aria-hidden="true" tabindex="-1"></a>                context <span class="op">=</span> <span class="va">self</span>.attention(xs, h, create_context<span class="op">=</span><span class="va">True</span>, compress_context<span class="op">=</span><span class="va">True</span>)</span>
+<span id="annotated-cell-11-31"><a href="#annotated-cell-11-31" aria-hidden="true" tabindex="-1"></a>                yt <span class="op">=</span> <span class="va">self</span>.fc(context)</span>
+<span id="annotated-cell-11-32"><a href="#annotated-cell-11-32" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="annotated-cell-11-33"><a href="#annotated-cell-11-33" aria-hidden="true" tabindex="-1"></a>                yt <span class="op">=</span> <span class="va">self</span>.fc(h)</span>
+<span id="annotated-cell-11-34"><a href="#annotated-cell-11-34" aria-hidden="true" tabindex="-1"></a>            ys.append(yt)</span>
+<span id="annotated-cell-11-35"><a href="#annotated-cell-11-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-11-36"><a href="#annotated-cell-11-36" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> torch.stack(ys, dim<span class="op">=</span><span class="dv">1</span>).squeeze(<span class="op">-</span><span class="dv">1</span>)</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-11" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="14" data-code-cell="annotated-cell-11" data-code-annotation="1">Initialize the attention module</span>
+</dd>
+<dt data-target-cell="annotated-cell-11" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="30" data-code-cell="annotated-cell-11" data-code-annotation="2">Apply attention</span>
+</dd>
+</dl>
+</div>
+</div>
+<p>Using this architecture, we will now train and evaluate an attention-based Seq-to-Seq model on the training data.</p>
+<div class="cell" data-execution_count="19">
+<div class="cell-output cell-output-display" data-execution_count="19">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-results-attention" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;4: Training &amp; evaluation metrics for the content-attention based Seq-to-Seq model</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Metric</th>
+<th data-quarto-table-cell-role="th">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Model</td>
+<td>LSTM + Embeddings + Attention</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Embedding Size</td>
+<td>32</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Sequence Length</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Training Epochs</td>
+<td>250</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Accuracy</td>
+<td>0.00%</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Avg. Divergence</td>
+<td>0.010806</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<p>We can observe that the addition of the attention mechanism significantly reduces the average divergence, which indicates that the bottleneck-problem of the hidden state is being alleviated.</p>
+</section>
+</section>
+<section id="sec-pointer" class="level3" data-number="3.5">
+<h3 data-number="3.5" class="anchored" data-anchor-id="sec-pointer"><span class="header-section-number">3.5</span> Seq-to-Seq with Pointers</h3>
+<p>As previously outlined, the issue of the hidden state bottleneck was addressed through the introduction of attention. Nevertheless, this does not address the issue of precision (see <a href="#sec-ff">Section&nbsp;3.1</a>): The problem arises because the network attempts to predict values in the ordered array directly, however because these are <code>Float32</code> values, it is highly unlikely that the network will be able to output it in full precision.</p>
+<p>To address this issue, we can modify the model to predict indices of the ordered array, instead of values: This means that we will train a model that understands how to rank items without needing to predict exact output values, thereby resolving the precision problem. This idea is known as a pointer network <span class="citation" data-cites="vinyals-2015B">(<a href="#ref-vinyals-2015B" role="doc-biblioref">Vinyals, Fortunato, and Jaitly 2015</a>)</span> and we will implement it in this section.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Further Reading
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><a href="https://kierszbaumsamuel.medium.com/pointer-networks-what-are-they-c3cb68fae076">Pointer networks : What are they? - medium</a></li>
+<li><a href="https://www.hyperscience.com/blog/the-power-of-pointer-networks/">The Power of Pointer Networks - hyperscience</a></li>
+</ul>
+</div>
+</div>
+<p>Implementing a pointer network is actually a simplified model of the content-based attention Seq-to-Seq model from <a href="#sec-attention">Section&nbsp;3.4</a>. The diagram below displays the Seq-to-Seq architecture using a pointer network as a decoder.</p>
+<div id="fig-ptr" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/ptr-attention.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;4: Encoder-decoder architecture with a pointer net</figcaption>
+</figure>
+</div>
+<p>The pointer network is essentially content-based attention, but without calculating a context (<a href="#eq-c">Equation&nbsp;3</a>) and instead using the attention-weights (see <a href="#eq-a">Equation&nbsp;2</a>) as outputs. These attention-weights are a distribution over the input-vocabulary and can therefore serve as “pointers” to the input vocabulary. To use this distribution as a hidden-state for subsequent steps, we simply do a matrix multiplication with this distribution to convert it into a scalar-value.</p>
+<div class="cell" data-execution_count="20">
+<div class="sourceCode cell-code" id="annotated-cell-12"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-12-1"><a href="#annotated-cell-12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DecoderPointerLstm(nn.Module):</span>
+<span id="annotated-cell-12-2"><a href="#annotated-cell-12-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, hidden_size, use_attention):</span>
+<span id="annotated-cell-12-3"><a href="#annotated-cell-12-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(DecoderPointerLstm, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-12-4"><a href="#annotated-cell-12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-5"><a href="#annotated-cell-12-5" aria-hidden="true" tabindex="-1"></a>        <span class="co"># LSTM</span></span>
+<span id="annotated-cell-12-6"><a href="#annotated-cell-12-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lstm_cell <span class="op">=</span> nn.LSTMCell(hidden_size, hidden_size)</span>
+<span id="annotated-cell-12-7"><a href="#annotated-cell-12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-8"><a href="#annotated-cell-12-8" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Attention</span></span>
+<span id="annotated-cell-12-9"><a href="#annotated-cell-12-9" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.attention <span class="op">=</span> AdditiveAttention(hidden_size, hidden_size) <span class="cf">if</span> use_attention <span class="cf">else</span> <span class="va">None</span></span>
+<span id="annotated-cell-12-10"><a href="#annotated-cell-12-10" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.hidden_size <span class="op">=</span> hidden_size</span>
+<span id="annotated-cell-12-11"><a href="#annotated-cell-12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-12"><a href="#annotated-cell-12-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs, h, c, s):</span>
+<span id="annotated-cell-12-13"><a href="#annotated-cell-12-13" aria-hidden="true" tabindex="-1"></a>        ys <span class="op">=</span> []</span>
+<span id="annotated-cell-12-14"><a href="#annotated-cell-12-14" aria-hidden="true" tabindex="-1"></a>        yt <span class="op">=</span> torch.zeros((xs.shape[<span class="dv">0</span>], <span class="va">self</span>.hidden_size))  <span class="co"># SOS</span></span>
+<span id="annotated-cell-12-15"><a href="#annotated-cell-12-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-16"><a href="#annotated-cell-12-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(s):</span>
+<span id="annotated-cell-12-17"><a href="#annotated-cell-12-17" aria-hidden="true" tabindex="-1"></a>            h, c <span class="op">=</span> <span class="va">self</span>.lstm_cell(yt, (h, c))</span>
+<span id="annotated-cell-12-18"><a href="#annotated-cell-12-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-19"><a href="#annotated-cell-12-19" aria-hidden="true" tabindex="-1"></a>            <span class="co"># now returns a softmax distribution</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-12" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-12-20" class="code-annotation-target"><a href="#annotated-cell-12-20" aria-hidden="true" tabindex="-1"></a>            p <span class="op">=</span> <span class="va">self</span>.attention(xs, h, create_context<span class="op">=</span><span class="va">False</span>)</span>
+<span id="annotated-cell-12-21"><a href="#annotated-cell-12-21" aria-hidden="true" tabindex="-1"></a>            ys.append(p)</span>
+<span id="annotated-cell-12-22"><a href="#annotated-cell-12-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-23"><a href="#annotated-cell-12-23" aria-hidden="true" tabindex="-1"></a>            <span class="co"># compile next input</span></span>
+<span id="annotated-cell-12-24"><a href="#annotated-cell-12-24" aria-hidden="true" tabindex="-1"></a>            <span class="co"># this could also be just the pointer distribution, but would restrict</span></span>
+<span id="annotated-cell-12-25"><a href="#annotated-cell-12-25" aria-hidden="true" tabindex="-1"></a>            <span class="co"># the model to a specific sequence length (not generalizable) so we compile</span></span>
+<span id="annotated-cell-12-26"><a href="#annotated-cell-12-26" aria-hidden="true" tabindex="-1"></a>            <span class="co"># a new state from it</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-12" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-12-27" class="code-annotation-target"><a href="#annotated-cell-12-27" aria-hidden="true" tabindex="-1"></a>            yt <span class="op">=</span> torch.bmm(p.unsqueeze(<span class="dv">1</span>), xs).squeeze(<span class="dv">1</span>)</span>
+<span id="annotated-cell-12-28"><a href="#annotated-cell-12-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-12-29"><a href="#annotated-cell-12-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> torch.stack(ys, dim<span class="op">=</span><span class="dv">1</span>)</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-12" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="20" data-code-cell="annotated-cell-12" data-code-annotation="1"><strong>No Context Vector Creation:</strong> Directly return the attention-weights which serve as pointers to the input-vocabulary</span>
+</dd>
+<dt data-target-cell="annotated-cell-12" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="27" data-code-cell="annotated-cell-12" data-code-annotation="2"><strong>Compress softmax distribution:</strong> Calculate a scalar value to serve as the next hidden state for the decoder</span>
+</dd>
+</dl>
+</div>
+</div>
+<p>Using this new architecture, we will train and evaluate a pointer-net based Seq-to-Seq model.</p>
+<div class="cell" data-execution_count="21">
+<div class="cell-output cell-output-display" data-execution_count="21">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-results-ptr" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;5: Training &amp; evaluation metrics for the pointer Seq-to-Seq model</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Metric</th>
+<th data-quarto-table-cell-role="th">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Model</td>
+<td>LSTM + Embeddings + Attention + Pointer</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Embedding Size</td>
+<td>32</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Sequence Length</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Training Epochs</td>
+<td>250</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Accuracy</td>
+<td>93.05%</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Avg. Divergence</td>
+<td>0.00228</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<p>The results improve significantly with the addition of the pointer mechanism: Not only is the accuracy metric working, indicating that we have solved the precision problem, but also the average divergence is decreasing as a side effect of the model predicting more precise values.</p>
+<p>Comparing the model output with the target values directly (see <a href="#tbl-inspect-ptr">Table&nbsp;6</a>), it is difficult to find wrong outputs due to the high accuracy. However, we can observe that when the model makes a mistake, the resulting value is still guaranteed to be present in the input array, due to the pointer mechanism.</p>
+<div class="cell" data-execution_count="23">
+<div class="cell-output cell-output-display" data-execution_count="23">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-inspect-ptr" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;6: Concrete predictions and training pairs for the pointer Seq-to-Seq model</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Example Nr.</th>
+<th data-quarto-table-cell-role="th">Type</th>
+<th data-quarto-table-cell-role="th">Values</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0</td>
+<td>input</td>
+<td>0.0850,0.4038,0.4878,0.6103,0.6019</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0</td>
+<td>prediction</td>
+<td>0.0850,0.4038,0.4878,0.6019,0.6103</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0</td>
+<td>target</td>
+<td>0.0850,0.4038,0.4878,0.6019,0.6103</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>5</td>
+<td>input</td>
+<td>0.5476,0.8797,0.8482,0.5416,0.5308</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>5</td>
+<td>prediction</td>
+<td>0.5416,0.5476,0.5476,0.8482,0.8797</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>5</td>
+<td>target</td>
+<td>0.5308,0.5416,0.5476,0.8482,0.8797</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>10</td>
+<td>input</td>
+<td>0.9732,0.6948,0.5976,0.8599,0.2902</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>10</td>
+<td>prediction</td>
+<td>0.2902,0.5976,0.6948,0.8599,0.9732</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>10</td>
+<td>target</td>
+<td>0.2902,0.5976,0.6948,0.8599,0.9732</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+<section id="sec-rpw" class="level3 page-columns page-full" data-number="3.6">
+<h3 data-number="3.6" class="anchored" data-anchor-id="sec-rpw"><span class="header-section-number">3.6</span> Read-Process-Write Architecture</h3>
+<p>The Seq-to-Seq architecture combined with a pointer network already achieves good results. However, there is an important observation to be made: The Seq-to-Seq architecture is reading the inputs sequentially and generating outputs sequentially (see <a href="#fig-s2s">Figure&nbsp;2</a>). As a result, the order in which the input array is presented has an effect on the performance of the model because it changes the encoding. This property can be advantageous when dealing with sequential data, but not for Set2Set. Sets, by definition lack order and thus every set should be encoded identically (see <span class="citation" data-cites="vinyals-2015A">Vinyals, Bengio, and Kudlur (<a href="#ref-vinyals-2015A" role="doc-biblioref">2015</a>)</span>).</p>
+<p>Read-Process-Write Architecture, introduced by <span class="citation" data-cites="vinyals-2015A">Vinyals, Bengio, and Kudlur (<a href="#ref-vinyals-2015A" role="doc-biblioref">2015</a>)</span> addresses this problem by using an <em>order invariant encoding</em> via content-based attention in the encoder and a <em>glimpse</em> mechanism in the decoder for <em>order invariant decoding</em>.</p>
+<p>Compared to the previous sections, we will now continue with the notation from <span class="citation" data-cites="vinyals-2015A">Vinyals, Bengio, and Kudlur (<a href="#ref-vinyals-2015A" role="doc-biblioref">2015</a>)</span> with slight modifications so that the reader can easily compare our implementation to the paper.</p>
+<ul>
+<li><span class="math inline">\(m\)</span>: Memory vector (previously embeddings)</li>
+<li><span class="math inline">\(q\)</span>: Hidden state of the LSTM (previously <span class="math inline">\(h\)</span>)</li>
+<li><span class="math inline">\(q^*\)</span>: Concatenation of the hidden State of the LSTM + attention readout: <span class="math inline">\([q, r]\)</span></li>
+</ul>
+<p><a href="#fig-rpw">Figure&nbsp;5</a> displays the Read-Process-Write architecture, excluding the glimpse mechanism, which will be described in a following section.</p>
+<div id="fig-rpw" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="images/rpw.png" class="ligthbox img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;5: Read-Process-Write architecture (simplified without glimpse-mechanism)</figcaption>
+</figure>
+</div>
+<div class="page-columns page-full"><p>Although this diagram is more verbose than <a href="#fig-s2s">Figure&nbsp;2</a>, in essence the Read-Process-Write architecture can be understood as an Encoder-Decoder model with embeddings. In fact, in our implementation, we use the same embedder introduced in <a href="#sec-embedding">Section&nbsp;3.3</a> for this model. The encoder is called the <em>Process</em> block and the main difference to the Seq-toSeq encoder from <a href="#fig-s2s">Figure&nbsp;2</a> is, that it can “see” the input sequence <span class="math inline">\(m\)</span> only via an attention mechanism, instead of as input into the LSTM, resulting in an <em>order invariant encoding</em>. As a side effect, we can now also specify how many process steps we want to take, potentially even more than the sequence length <span class="math inline">\(s\)</span> of the input array <a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>.</p><div class="no-row-height column-margin column-container"><li id="fn3"><p><sup>3</sup>&nbsp;In our implementation we’re using 5 processing steps, but these can be adjusted as seen fit</p></li></div></div>
+<div class="cell" data-execution_count="24">
+<div class="sourceCode cell-code" id="annotated-cell-13"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-13-1"><a href="#annotated-cell-13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ProcessEncoderLstm(nn.Module):</span>
+<span id="annotated-cell-13-2"><a href="#annotated-cell-13-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size):</span>
+<span id="annotated-cell-13-3"><a href="#annotated-cell-13-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(ProcessEncoderLstm, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-13-4"><a href="#annotated-cell-13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-13-5"><a href="#annotated-cell-13-5" aria-hidden="true" tabindex="-1"></a>        <span class="co"># LSTM</span></span>
+<span id="annotated-cell-13-6"><a href="#annotated-cell-13-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lstm_cell <span class="op">=</span> nn.LSTMCell(hidden_size <span class="op">*</span> <span class="dv">2</span>, hidden_size)</span>
+<span id="annotated-cell-13-7"><a href="#annotated-cell-13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-13-8"><a href="#annotated-cell-13-8" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Attention</span></span>
+<span id="annotated-cell-13-9"><a href="#annotated-cell-13-9" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.attention <span class="op">=</span> AdditiveAttention(key_size<span class="op">=</span>input_size, query_size<span class="op">=</span>hidden_size)</span>
+<span id="annotated-cell-13-10"><a href="#annotated-cell-13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-13-11"><a href="#annotated-cell-13-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, ms, q_star, h, c, process_steps):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-13" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-13-12" class="code-annotation-target"><a href="#annotated-cell-13-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(process_steps):</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-13" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-13-13" class="code-annotation-target"><a href="#annotated-cell-13-13" aria-hidden="true" tabindex="-1"></a>            q, c <span class="op">=</span> <span class="va">self</span>.lstm_cell(q_star, (h, c))</span>
+<span id="annotated-cell-13-14"><a href="#annotated-cell-13-14" aria-hidden="true" tabindex="-1"></a></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-13" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-13-15" class="code-annotation-target"><a href="#annotated-cell-13-15" aria-hidden="true" tabindex="-1"></a>            q_star <span class="op">=</span> <span class="va">self</span>.attention(ms, q, create_context<span class="op">=</span><span class="va">True</span>)</span>
+<span id="annotated-cell-13-16"><a href="#annotated-cell-13-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-13-17"><a href="#annotated-cell-13-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> q_star</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-13" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="12" data-code-cell="annotated-cell-13" data-code-annotation="1"><strong>Independent lengths:</strong> The encoding is not dependent on the length of the input sequence anymore. This gives more flexibility and the potential to define the number of processing steps manually.</span>
+</dd>
+<dt data-target-cell="annotated-cell-13" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="13" data-code-cell="annotated-cell-13" data-code-annotation="2"><strong>Input Modification:</strong> Instead of feeding the inputs <span class="math inline">\(m\)</span> sequentially into the encoder LSTM, we’re using <span class="math inline">\(q^*\)</span> as the input</span>
+</dd>
+<dt data-target-cell="annotated-cell-13" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-lines="15" data-code-cell="annotated-cell-13" data-code-annotation="3"><strong><span class="math inline">\(q^*\)</span> generation</strong>: Concatenation of the previous hidden state <span class="math inline">\(q\)</span> and the attention readout from comparing the memory vector <span class="math inline">\(m\)</span> with <span class="math inline">\(q\)</span></span>
+</dd>
+</dl>
+</div>
+</div>
+<p>As shown in <a href="#fig-rpw">Figure&nbsp;5</a>, <span class="math inline">\(q^*\)</span> from the <em>Process</em> block is used to initialize the <em>Write</em> block. The <em>Write</em> block is mostly identical to the decoder pointer-network introduced in <a href="#sec-pointer">Section&nbsp;3.5</a>, with the addition of a glimpse-mechanism, which was also introduced by <span class="citation" data-cites="vinyals-2015A">Vinyals, Bengio, and Kudlur (<a href="#ref-vinyals-2015A" role="doc-biblioref">2015</a>)</span>. Glimpse is another content-based attention module which is calculated from <span class="math inline">\(q^*\)</span> and the memory vector <span class="math inline">\(m\)</span>. The glimpse-value <span class="math inline">\(g\)</span> is then passed as input <span class="math inline">\(x\)</span> and <span class="math inline">\(q^*\)</span> as the hidden state <span class="math inline">\(h\)</span> to the LSTM. Although the authors only briefly describe the design-decision behind this mechanism, it increases the performance of the model significantly. While the decoder in the Seq-to-Seq architecture was able to rely on its previous outputs as inputs <span class="math inline">\(x\)</span> for the following steps, in a non-sequential setting as in Set-to-Set, this is not the case, and the glimpse value <span class="math inline">\(g\)</span> serves as a non-sequential replacement for it.</p>
+<div class="cell" data-execution_count="25">
+<div class="sourceCode cell-code" id="annotated-cell-14"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-14-1"><a href="#annotated-cell-14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> WriteDecoderPointerLstm(nn.Module):</span>
+<span id="annotated-cell-14-2"><a href="#annotated-cell-14-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size):</span>
+<span id="annotated-cell-14-3"><a href="#annotated-cell-14-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>(WriteDecoderPointerLstm, <span class="va">self</span>).<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-14-4"><a href="#annotated-cell-14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-5"><a href="#annotated-cell-14-5" aria-hidden="true" tabindex="-1"></a>        <span class="co"># LSTM</span></span>
+<span id="annotated-cell-14-6"><a href="#annotated-cell-14-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.lstm_cell <span class="op">=</span> nn.LSTMCell(input_size, hidden_size)</span>
+<span id="annotated-cell-14-7"><a href="#annotated-cell-14-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.input_size <span class="op">=</span> input_size</span>
+<span id="annotated-cell-14-8"><a href="#annotated-cell-14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-9"><a href="#annotated-cell-14-9" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Attention</span></span>
+<span id="annotated-cell-14-10"><a href="#annotated-cell-14-10" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.attention <span class="op">=</span> AdditiveAttention(key_size<span class="op">=</span>input_size, query_size<span class="op">=</span>hidden_size)</span>
+<span id="annotated-cell-14-11"><a href="#annotated-cell-14-11" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.hidden_size <span class="op">=</span> hidden_size</span>
+<span id="annotated-cell-14-12"><a href="#annotated-cell-14-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-13"><a href="#annotated-cell-14-13" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Glimpse</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-14" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-14-14" class="code-annotation-target"><a href="#annotated-cell-14-14" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.glimpse <span class="op">=</span> AdditiveAttention(key_size<span class="op">=</span>input_size, query_size<span class="op">=</span>input_size)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-14" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-14-15" class="code-annotation-target"><a href="#annotated-cell-14-15" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.glimpse_projection <span class="op">=</span> nn.Linear(hidden_size, input_size)</span>
+<span id="annotated-cell-14-16"><a href="#annotated-cell-14-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-17"><a href="#annotated-cell-14-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, m, h, c, s):</span>
+<span id="annotated-cell-14-18"><a href="#annotated-cell-14-18" aria-hidden="true" tabindex="-1"></a>        ys <span class="op">=</span> []</span>
+<span id="annotated-cell-14-19"><a href="#annotated-cell-14-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-20"><a href="#annotated-cell-14-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> t <span class="kw">in</span> <span class="bu">range</span>(s):</span>
+<span id="annotated-cell-14-21"><a href="#annotated-cell-14-21" aria-hidden="true" tabindex="-1"></a>            <span class="co"># glimpse</span></span>
+<span id="annotated-cell-14-22"><a href="#annotated-cell-14-22" aria-hidden="true" tabindex="-1"></a>            <span class="co"># h = q_star (from process-block)</span></span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-14" data-target-annotation="3" onclick="event.preventDefault();">3</a><span id="annotated-cell-14-23" class="code-annotation-target"><a href="#annotated-cell-14-23" aria-hidden="true" tabindex="-1"></a>            g <span class="op">=</span> <span class="va">self</span>.glimpse(m, <span class="va">self</span>.glimpse_projection(h), create_context<span class="op">=</span><span class="va">True</span>, compress_context<span class="op">=</span><span class="va">True</span>)</span>
+<span id="annotated-cell-14-24"><a href="#annotated-cell-14-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-25"><a href="#annotated-cell-14-25" aria-hidden="true" tabindex="-1"></a>            h, c <span class="op">=</span> <span class="va">self</span>.lstm_cell(g, (h, c))</span>
+<span id="annotated-cell-14-26"><a href="#annotated-cell-14-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-27"><a href="#annotated-cell-14-27" aria-hidden="true" tabindex="-1"></a>            <span class="co"># returns softmax</span></span>
+<span id="annotated-cell-14-28"><a href="#annotated-cell-14-28" aria-hidden="true" tabindex="-1"></a>            y <span class="op">=</span> <span class="va">self</span>.attention(m, h, create_context<span class="op">=</span><span class="va">False</span>)</span>
+<span id="annotated-cell-14-29"><a href="#annotated-cell-14-29" aria-hidden="true" tabindex="-1"></a>            ys.append(y)</span>
+<span id="annotated-cell-14-30"><a href="#annotated-cell-14-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-14-31"><a href="#annotated-cell-14-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> torch.stack(ys, dim<span class="op">=</span><span class="dv">1</span>)</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-14" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="14" data-code-cell="annotated-cell-14" data-code-annotation="1"><strong>Initialize glimpse:</strong> Glimpse is just another attention module</span>
+</dd>
+<dt data-target-cell="annotated-cell-14" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="15" data-code-cell="annotated-cell-14" data-code-annotation="2"><strong>Initialize a projection layer:</strong> This makes the shapes of the hidden state <span class="math inline">\(q^*\)</span> and memory vector <span class="math inline">\(m\)</span> compatible</span>
+</dd>
+<dt data-target-cell="annotated-cell-14" data-target-annotation="3">3</dt>
+<dd>
+<span data-code-lines="23" data-code-cell="annotated-cell-14" data-code-annotation="3"><strong>Apply glimpse:</strong> Before generating a new hidden state, calculate the glimpse value <span class="math inline">\(g\)</span> to use as the input <span class="math inline">\(x\)</span> for the LSTM</span>
+</dd>
+</dl>
+</div>
+</div>
+<p>To combine the <em>Read</em>, <em>Process</em> and <em>Write</em> modules into a single model, we will introduce the <code>RPW</code> class using pytorch.</p>
+<div class="cell" data-execution_count="26">
+<div class="sourceCode cell-code" id="annotated-cell-15"><pre class="sourceCode python code-annotation-code code-with-copy code-annotated"><code class="sourceCode python"><span id="annotated-cell-15-1"><a href="#annotated-cell-15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ProcessBlock(nn.Module):</span>
+<span id="annotated-cell-15-2"><a href="#annotated-cell-15-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size):</span>
+<span id="annotated-cell-15-3"><a href="#annotated-cell-15-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-15-4"><a href="#annotated-cell-15-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.module <span class="op">=</span> ProcessEncoderLstm(input_size<span class="op">=</span>input_size, hidden_size<span class="op">=</span>hidden_size)</span>
+<span id="annotated-cell-15-5"><a href="#annotated-cell-15-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.hidden_size <span class="op">=</span> hidden_size</span>
+<span id="annotated-cell-15-6"><a href="#annotated-cell-15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-7"><a href="#annotated-cell-15-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, ms, s):</span>
+<span id="annotated-cell-15-8"><a href="#annotated-cell-15-8" aria-hidden="true" tabindex="-1"></a>        bs <span class="op">=</span> ms.size(<span class="dv">0</span>)</span>
+<span id="annotated-cell-15-9"><a href="#annotated-cell-15-9" aria-hidden="true" tabindex="-1"></a>        q_star <span class="op">=</span> torch.zeros(bs, <span class="va">self</span>.hidden_size <span class="op">*</span> <span class="dv">2</span>)</span>
+<span id="annotated-cell-15-10"><a href="#annotated-cell-15-10" aria-hidden="true" tabindex="-1"></a>        h <span class="op">=</span> torch.zeros(bs, <span class="va">self</span>.hidden_size)</span>
+<span id="annotated-cell-15-11"><a href="#annotated-cell-15-11" aria-hidden="true" tabindex="-1"></a>        c <span class="op">=</span> torch.zeros(bs, <span class="va">self</span>.hidden_size)</span>
+<span id="annotated-cell-15-12"><a href="#annotated-cell-15-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-13"><a href="#annotated-cell-15-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.module(ms, q_star, h, c, s)</span>
+<span id="annotated-cell-15-14"><a href="#annotated-cell-15-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-15"><a href="#annotated-cell-15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-16"><a href="#annotated-cell-15-16" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> WriteBlock(nn.Module):</span>
+<span id="annotated-cell-15-17"><a href="#annotated-cell-15-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, input_size, hidden_size):</span>
+<span id="annotated-cell-15-18"><a href="#annotated-cell-15-18" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-15-19"><a href="#annotated-cell-15-19" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.module <span class="op">=</span> WriteDecoderPointerLstm(input_size<span class="op">=</span>input_size, hidden_size<span class="op">=</span>hidden_size <span class="op">*</span> <span class="dv">2</span>)</span>
+<span id="annotated-cell-15-20"><a href="#annotated-cell-15-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-21"><a href="#annotated-cell-15-21" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, m, q_star):</span>
+<span id="annotated-cell-15-22"><a href="#annotated-cell-15-22" aria-hidden="true" tabindex="-1"></a>        bs, s <span class="op">=</span> m.size(<span class="dv">0</span>), m.size(<span class="dv">1</span>)</span>
+<span id="annotated-cell-15-23"><a href="#annotated-cell-15-23" aria-hidden="true" tabindex="-1"></a>        c <span class="op">=</span> torch.zeros(bs, <span class="va">self</span>.module.hidden_size)</span>
+<span id="annotated-cell-15-24"><a href="#annotated-cell-15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-25"><a href="#annotated-cell-15-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.module(m, q_star, c, s)</span>
+<span id="annotated-cell-15-26"><a href="#annotated-cell-15-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-27"><a href="#annotated-cell-15-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-28"><a href="#annotated-cell-15-28" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> RPW(nn.Module):</span>
+<span id="annotated-cell-15-29"><a href="#annotated-cell-15-29" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, embedding_size, hidden_size, process_steps):</span>
+<span id="annotated-cell-15-30"><a href="#annotated-cell-15-30" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="annotated-cell-15-31"><a href="#annotated-cell-15-31" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.read <span class="op">=</span> Embedder(embedding_size<span class="op">=</span>embedding_size)</span>
+<span id="annotated-cell-15-32"><a href="#annotated-cell-15-32" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.process <span class="op">=</span> ProcessBlock(input_size<span class="op">=</span>embedding_size, hidden_size<span class="op">=</span>hidden_size)</span>
+<span id="annotated-cell-15-33"><a href="#annotated-cell-15-33" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.write <span class="op">=</span> WriteBlock(input_size<span class="op">=</span>embedding_size, hidden_size<span class="op">=</span>hidden_size)</span>
+<span id="annotated-cell-15-34"><a href="#annotated-cell-15-34" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.process_steps <span class="op">=</span> process_steps</span>
+<span id="annotated-cell-15-35"><a href="#annotated-cell-15-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-36"><a href="#annotated-cell-15-36" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, xs):</span>
+<span id="annotated-cell-15-37"><a href="#annotated-cell-15-37" aria-hidden="true" tabindex="-1"></a>        xs <span class="op">=</span> xs.unsqueeze(<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="annotated-cell-15-38"><a href="#annotated-cell-15-38" aria-hidden="true" tabindex="-1"></a>        m <span class="op">=</span> <span class="va">self</span>.read(xs)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-15" data-target-annotation="1" onclick="event.preventDefault();">1</a><span id="annotated-cell-15-39" class="code-annotation-target"><a href="#annotated-cell-15-39" aria-hidden="true" tabindex="-1"></a>        q_star <span class="op">=</span> <span class="va">self</span>.process(m, <span class="va">self</span>.process_steps)</span>
+<a class="code-annotation-anchor" data-target-cell="annotated-cell-15" data-target-annotation="2" onclick="event.preventDefault();">2</a><span id="annotated-cell-15-40" class="code-annotation-target"><a href="#annotated-cell-15-40" aria-hidden="true" tabindex="-1"></a>        pointers <span class="op">=</span> <span class="va">self</span>.write(m, q_star)</span>
+<span id="annotated-cell-15-41"><a href="#annotated-cell-15-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="annotated-cell-15-42"><a href="#annotated-cell-15-42" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> pointers</span><div class="code-annotation-gutter-bg"></div><div class="code-annotation-gutter"></div></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-annotation">
+<dl class="code-annotation-container-grid">
+<dt data-target-cell="annotated-cell-15" data-target-annotation="1">1</dt>
+<dd>
+<span data-code-lines="39" data-code-cell="annotated-cell-15" data-code-annotation="1">Generates a hidden state <span class="math inline">\(q^*\)</span> which is used to initialize to <em>Write</em> module. This encoding is order invariant.</span>
+</dd>
+<dt data-target-cell="annotated-cell-15" data-target-annotation="2">2</dt>
+<dd>
+<span data-code-lines="40" data-code-cell="annotated-cell-15" data-code-annotation="2">Generates the pointer distribution using the newly added glimpse mechanism</span>
+</dd>
+</dl>
+</div>
+</div>
+<p>Finally, we will train and evaluate a new model with this architecture.</p>
+<div class="cell" data-execution_count="27">
+<div class="cell-output cell-output-display" data-execution_count="27">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+<div id="tbl-results-rpw" class="anchored">
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<caption>Table&nbsp;7: Training &amp; evaluation metrics for the Read-Process-Write architecture</caption>
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Metric</th>
+<th data-quarto-table-cell-role="th">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Model</td>
+<td>Read-Process-Write (Pointer)</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Embedding Size</td>
+<td>32</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Sequence Length</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Training Epochs</td>
+<td>250</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Accuracy</td>
+<td>98.70%</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>Avg. Divergence</td>
+<td>0.00036</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<div class="cell" data-execution_count="29">
+<div class="cell-output cell-output-display">
+<div id="fig-inspect-rpw" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="index_files/figure-html/fig-inspect-rpw-output-1.png" class="img-fluid figure-img"></p>
+<figcaption class="figure-caption">Figure&nbsp;6: Concrete predictions and training pairs for the Read-Process-Write model</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The results show almost perfect accuracy values and a very low divergence. This indicates that the order invariant encoding / decoding, which is implemented via content-based attention, improves the performance. With more processing steps and longer training time, this performance can be improved even further.</p>
+</section>
+</section>
+<section id="summary" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="summary"><span class="header-section-number">4</span> Summary</h2>
+<p>The Seq-to-Seq architecture is useful for processing sequential data of varying lengths, but faces challenges when dealing with unordered inputs or outputs. In this article, we highlight the strengths of the Read-Process-Write architecture, which is an extension of the classical Seq-to-Seq paradigm to a Set-to-Set paradigm, by building the final model from the ground up and comparing the performance improvements at each step. LSTMs are better at handling variable-length sequences than a baseline feed-forward networks (see <a href="#sec-ff">Section&nbsp;3.1</a>), and can be combined into a Seq-to-Seq model with an encoder and decoder (see <a href="#sec-s2s">Section&nbsp;3.2</a>), potentially also using embeddings for improved performance (see <a href="#sec-embedding">Section&nbsp;3.3</a>). Incorporating an attention-mechanism can help to overcome the hidden-state bottleneck, significantly improving performance (see <a href="#sec-attention">Section&nbsp;3.4</a>). The introduction of pointer networks, on the other hand, allows the model to be more accurate in its output, by predicting indices from the input vocabulary rather than the values directly (see <a href="#sec-pointer">Section&nbsp;3.5</a>). Finally, by processing the inputs for the encoder and decoder LSTM in a non-sequential manner via attention, the Read-Process-Write architecture (see <a href="#sec-rpw">Section&nbsp;3.6</a>) eliminates the sequential limitation of Seq-to-Seq models and results in a Set-to-Set architecture, which may be used to solve the problem of sorting numbers introduced in this article.</p>
+
+
+
+</section>
+
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-bebis-1994" class="csl-entry" role="listitem">
+Bebis, G, and M Georgiopoulos. 1994. <span>“<span class="nocase">Feed-forward neural networks</span>.”</span> <a href="https://ieeexplore.ieee.org/document/329294">https://ieeexplore.ieee.org/document/329294</a>.
+</div>
+<div id="ref-graves-2014" class="csl-entry" role="listitem">
+Graves, Alex, Greg Wayne, and Ivo Danihelka. 2014. <span>“<span class="nocase">Neural turing machines</span>.”</span> <a href="https://arxiv.org/abs/1410.5401">https://arxiv.org/abs/1410.5401</a>.
+</div>
+<div id="ref-hochreiter-1997" class="csl-entry" role="listitem">
+Hochreiter, Sepp, and Jürgen Schmidhuber. 1997. <span>“<span class="nocase">Long Short-Term memory</span>.”</span> <em>Neural Computation</em> 9 (8): 1735–80. <a href="https://doi.org/10.1162/neco.1997.9.8.1735">https://doi.org/10.1162/neco.1997.9.8.1735</a>.
+</div>
+<div id="ref-sutskever-2014" class="csl-entry" role="listitem">
+Sutskever, Ilya, Oriol Vinyals, and Quoc Le V. 2014. <span>“<span class="nocase">Sequence to Sequence Learning with Neural Networks</span>.”</span> <a href="https://arxiv.org/abs/1409.3215">https://arxiv.org/abs/1409.3215</a>.
+</div>
+<div id="ref-vinyals-2015A" class="csl-entry" role="listitem">
+Vinyals, Oriol, Samy Bengio, and Manjunath Kudlur. 2015. <span>“<span class="nocase">Order Matters: Sequence to sequence for sets</span>.”</span> <a href="https://arxiv.org/abs/1511.06391">https://arxiv.org/abs/1511.06391</a>.
+</div>
+<div id="ref-vinyals-2015B" class="csl-entry" role="listitem">
+Vinyals, Oriol, Meire Fortunato, and Navdeep Jaitly. 2015. <span>“<span>Pointer Networks</span>.”</span> <a href="https://arxiv.org/abs/1506.03134">https://arxiv.org/abs/1506.03134</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

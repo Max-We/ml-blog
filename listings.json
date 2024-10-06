@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/set-to-set/index.html",
       "/posts/uniform-circle-sampling/index.html",
       "/posts/dynamic-programming-1/index.html",
       "/posts/rnn-2/index.html",
